@@ -1,42 +1,45 @@
-# CutPlan MVP v0.3
+# CutPlan v0.4.1 — Guillotine cutting prototype
 
-A browser-based cutting-list and rectangular sheet nesting prototype.
+Browser-based rectangular sheet-cutting prototype. It keeps the v0.4 multi-stage guillotine partition and cut-recording logic; this update improves input handling, annotation, and search diversification without allowing free-form/non-guillotine placements.
 
-## Run on Ubuntu
+## Run locally
 
-1. Extract the ZIP.
-2. Open a terminal in the extracted `cutplan-mvp-v03` directory.
-3. Run:
+```bash
+python3 -m http.server 8000
+```
 
-   ```bash
-   python3 -m http.server 8000
-   ```
+Open http://localhost:8000.
 
-4. Open `http://localhost:8000` in Chrome or Firefox.
+## Input methods
 
-The project is static HTML + JavaScript. OCR is loaded from the Tesseract.js CDN, so image OCR needs an internet connection. CSV import and manual entry work locally.
+- **PDF:** Digital PDFs are read using PDF.js text extraction. Scanned PDFs are rendered page-by-page and passed through Tesseract OCR.
+- **Image:** JPG/PNG OCR through Tesseract.
+- **CSV:** `row_id,length,width,quantity,rotation,band_top,band_right,band_bottom,band_left`.
+- **Manual:** Edit rows and top/right/bottom/left banding in the parts table.
 
-## Changes in v0.3
+Row references may be numeric or alphanumeric (`1`, `A`, `KB`, `CAB-A1`). References must be unique (case-insensitive). OCR output is only a draft and must be reviewed before optimization.
 
-- Removed automatically inserted fake `Part 1` and `Part 2` sample rows. The application starts empty.
-- Rows use the original cutting-list reference (`#1`, `#2`, etc.). Expanded physical pieces use labels such as `#13 · 1/2` and `#13 · 2/2`.
-- Added an optional 27-row benchmark list matching the user's supplied cutting-list photo.
-- OCR parser now treats the leading number as a row reference when a line contains row, length, width and quantity. It no longer blindly treats the first three numbers as length, width and quantity.
-- Added image enlargement and grayscale/contrast preprocessing before OCR.
-- Replaced the single greedy placement run with a multi-start MaxRects optimizer: up to 12 / 32 / 48 heuristic trials depending on search effort.
-- Tries multiple part orderings and placement scores (best-short-side-fit, best-area-fit, best-long-side-fit and contact-point score).
-- Checks that every requested piece is placed and validates that pieces do not overlap. The plan is rejected on validation failure.
-- Layout labels show true part dimensions (not kerf-expanded dimensions).
-- CSV rows preserve a row reference and rotation permission.
+## v0.4.1 changes
 
-## Important limitations
+- Added direct PDF input. Digital PDFs use text extraction first; image-only/scanned PDFs use internal page rendering plus OCR.
+- Added alphanumeric cutting-list references in CSV and OCR parsing.
+- Improved drawing annotations: labels are embedded only when they fit; small parts are listed in a separate callout table below the board so their dimensions remain readable and do not collide.
+- Extended CSV import/export to preserve edge-banding selections.
+- Expanded the search from a handful of sorted orders to multi-start part-order search plus four placement-ranking strategies. Search effort: Standard 12, High 64, Maximum 240 starts.
+- Kept the multi-stage guillotine rectangular split, orientation, and cut-recording branches intact. Search candidates change; cut geometry remains guillotine-only.
 
-- This is a stronger heuristic, not a mathematically guaranteed global optimum.
-- This release performs general 2D rectangular nesting. It does not generate or certify a guillotine cut sequence. Confirm machine requirements before production.
-- Kerf is reserved conservatively on the trailing/right and bottom side of placements; enter the measured kerf. A blank kerf uses a provisional zero-kerf layout and is not production-ready.
-- OCR output remains a draft and must be checked against the source document.
-- Grain direction, board defects, clamps, edge banding, material grouping, and machine-specific cut sequencing are not yet modeled.
+## Validation
 
-## Test with the supplied benchmark
+Run the basic engine checks with:
 
-Choose CSV import → **Load my 27-row test list**. Confirm the sheet dimensions and kerf, then choose High or Maximum and Optimize. The expected source list contains 27 rows and 51 physical pieces.
+```bash
+node test-engine.js
+```
+
+The test checks the 27-row benchmark (51 pieces), placement bounds, overlap, and alphanumeric references.
+
+## Limitations
+
+This is a heuristic prototype, not certified production/CNC software. The optimizer does not prove global optimality. A larger search effort may not find a better board count. On the supplied 27-row benchmark with a 2440 × 1220 mm sheet and 3 mm kerf, High search currently returns 5 sheets and 74.06% area utilization. Further improvement needs more advanced search/packing techniques; the reported result must not be described as globally optimal.
+
+PDF.js and Tesseract are loaded from CDNs, so PDF reading and OCR require internet access in this browser-based version. Scanned/low-quality PDFs can still be misread; verify each extracted value. Kerf, edge trimming, grain, clamping, blade lead-in and actual machine cutting sequence must be checked before production. Edge banding is stored and shown as per-edge metadata; this does not generate an edgebander program.

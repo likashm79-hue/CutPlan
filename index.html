@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CutPlan — Sheet Optimization</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="./nesting-engine.js"></script>
 <style>
-:root{--bg:#f3f6f7;--panel:#fff;--ink:#17252c;--muted:#687982;--line:#dbe4e7;--green:#176b5b;--green-soft:#e9f4f1;--amber:#fff6df;--amber-ink:#765414;--red:#b23f43;--shadow:0 10px 30px #19303a0b;--radius:16px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{max-width:1500px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.brand{display:flex;align-items:center;gap:12px}.logo{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--green);color:#fff;font-size:21px;font-weight:850}.brand h1{margin:0;font-size:22px;letter-spacing:-.4px}.brand p{margin:1px 0 0;color:var(--muted);font-size:12px}.version{background:var(--green-soft);color:var(--green);padding:7px 11px;border-radius:99px;font-size:11px;font-weight:800}.grid{display:grid;grid-template-columns:minmax(380px,480px) minmax(0,1fr);gap:18px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;min-width:0}.panel h2{font-size:16px;margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin:0 0 15px}.tabs{display:flex;gap:4px;background:#f0f4f5;border-radius:11px;padding:4px;margin-bottom:13px}.tabs button{flex:1;border:0;background:transparent;border-radius:8px;padding:9px;font-weight:700;color:var(--muted);cursor:pointer}.tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 4px #0001}.drop{border:1.5px dashed #b8c9cd;border-radius:12px;background:#fafcfc;padding:18px;text-align:center}.drop strong{display:block;margin:5px 0}.drop small{color:var(--muted)}input,select,textarea,button{font:inherit}input[type=file]{max-width:100%;margin:10px 0 0}textarea{width:100%;min-height:105px;padding:10px;border:1px solid var(--line);border-radius:10px;resize:vertical}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.field label{display:block;font-size:11px;font-weight:750;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:#fff;color:var(--ink)}.btn{border:0;border-radius:9px;background:var(--green);color:white;padding:10px 13px;font-weight:750;cursor:pointer}.btn.secondary{background:#edf2f3;color:#30424a}.btn.ghost{background:transparent;color:var(--green);border:1px solid var(--line)}.btn:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.status{min-height:18px;margin-top:8px;color:var(--muted);font-size:12px}.status.error{color:var(--red)}.status.success{color:var(--green)}.hint{margin-top:12px;padding:11px 12px;border-radius:10px;background:var(--amber);border:1px solid #f0dfb0;color:var(--amber-ink);font-size:12px}.parts-head{display:flex;align-items:center;justify-content:space-between;margin:20px 0 8px}.parts-head h3{font-size:13px;margin:0}.parts-head small{color:var(--muted);font-weight:500}.table-wrap{overflow:auto;max-height:390px;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}th{position:sticky;top:0;z-index:1;background:#f4f7f8;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;text-align:left}td,th{padding:8px 7px;border-bottom:1px solid #edf1f2}td input{width:68px;padding:6px;border:1px solid var(--line);border-radius:6px}td input.ref{width:52px}td input[type=checkbox]{width:auto}.del{border:0;background:transparent;color:var(--red);font-size:17px;cursor:pointer}.right{display:flex;flex-direction:column;gap:18px}.canvas-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.canvas-head h2{margin:0 0 3px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:15px 0}.metric{background:#f7f9fa;border:1px solid #e7edef;border-radius:11px;padding:11px;min-width:0}.metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.03em}.metric strong{display:block;margin-top:3px;font-size:20px;letter-spacing:-.5px;overflow-wrap:anywhere}.sheets{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:13px}.sheet-card{border:1px solid var(--line);border-radius:12px;padding:11px;min-width:0;break-inside:avoid}.sheet-title{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:12px;margin-bottom:8px}.sheet-title small{font-size:11px;font-weight:550;color:var(--muted)}svg.layout{display:block;width:100%;height:auto;background:#f9fbfb;border:1px solid #cbd8dc;border-radius:6px}.piece{stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke}.piece-label{font-weight:800;fill:#193a35;text-anchor:middle;dominant-baseline:middle;pointer-events:none}.piece-dim{fill:#31564f;text-anchor:middle;pointer-events:none}.sheet-foot{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:var(--muted);font-size:10px}.piece-key{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px;margin-top:9px;padding-top:8px;border-top:1px solid #edf1f2}.piece-key span{font-size:10px;color:#40535b;overflow-wrap:anywhere}.piece-key b{color:#1e3935}.empty{padding:64px 18px;text-align:center;color:var(--muted)}.empty b{display:block;font-size:16px;color:var(--ink);margin-bottom:5px}.notice{padding:12px;border-radius:10px;background:#f6f9fa;border:1px solid var(--line);font-size:12px;color:#485b63}.notice strong{color:var(--ink)}.legend{color:var(--muted);font-size:11px;margin-top:10px}.pill{display:inline-flex;align-items:center;gap:5px;background:#edf6f3;color:var(--green);padding:4px 8px;border-radius:99px;font-size:10px;font-weight:800}.progress{height:7px;border-radius:99px;background:#edf1f2;overflow:hidden;margin-top:9px}.progress>i{display:block;height:100%;width:0;background:var(--green);transition:width .2s}.footer{color:var(--muted);font-size:11px;text-align:center;margin:18px 0 2px}.hidden{display:none!important}@media(max-width:1050px){.grid{grid-template-columns:1fr}.shell{padding:14px}}@media(max-width:580px){.metrics{grid-template-columns:repeat(2,1fr)}.field-grid{grid-template-columns:1fr 1fr}.canvas-head{flex-direction:column}.sheets{grid-template-columns:1fr}.top{align-items:flex-start}.version{display:none}}
+:root{--bg:#f3f6f7;--panel:#fff;--ink:#17252c;--muted:#687982;--line:#dbe4e7;--green:#176b5b;--green-soft:#e9f4f1;--amber:#fff6df;--amber-ink:#765414;--red:#b23f43;--shadow:0 10px 30px #19303a0b;--radius:16px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{max-width:1500px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.brand{display:flex;align-items:center;gap:12px}.logo{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--green);color:#fff;font-size:21px;font-weight:850}.brand h1{margin:0;font-size:22px;letter-spacing:-.4px}.brand p{margin:1px 0 0;color:var(--muted);font-size:12px}.version{background:var(--green-soft);color:var(--green);padding:7px 11px;border-radius:99px;font-size:11px;font-weight:800}.grid{display:grid;grid-template-columns:minmax(380px,480px) minmax(0,1fr);gap:18px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;min-width:0}.panel h2{font-size:16px;margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin:0 0 15px}.tabs{display:flex;gap:4px;background:#f0f4f5;border-radius:11px;padding:4px;margin-bottom:13px}.tabs button{flex:1;border:0;background:transparent;border-radius:8px;padding:9px;font-weight:700;color:var(--muted);cursor:pointer}.tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 4px #0001}.drop{border:1.5px dashed #b8c9cd;border-radius:12px;background:#fafcfc;padding:18px;text-align:center}.drop strong{display:block;margin:5px 0}.drop small{color:var(--muted)}input,select,textarea,button{font:inherit}input[type=file]{max-width:100%;margin:10px 0 0}textarea{width:100%;min-height:105px;padding:10px;border:1px solid var(--line);border-radius:10px;resize:vertical}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.field label{display:block;font-size:11px;font-weight:750;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:#fff;color:var(--ink)}.btn{border:0;border-radius:9px;background:var(--green);color:white;padding:10px 13px;font-weight:750;cursor:pointer}.btn.secondary{background:#edf2f3;color:#30424a}.btn.ghost{background:transparent;color:var(--green);border:1px solid var(--line)}.btn:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.status{min-height:18px;margin-top:8px;color:var(--muted);font-size:12px}.status.error{color:var(--red)}.status.success{color:var(--green)}.hint{margin-top:12px;padding:11px 12px;border-radius:10px;background:var(--amber);border:1px solid #f0dfb0;color:var(--amber-ink);font-size:12px}.parts-head{display:flex;align-items:center;justify-content:space-between;margin:20px 0 8px}.parts-head h3{font-size:13px;margin:0}.parts-head small{color:var(--muted);font-weight:500}.table-wrap{overflow:auto;max-height:390px;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}th{position:sticky;top:0;z-index:1;background:#f4f7f8;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;text-align:left}td,th{padding:8px 7px;border-bottom:1px solid #edf1f2}td input{width:68px;padding:6px;border:1px solid var(--line);border-radius:6px}td input.ref{width:86px}td input[type=checkbox]{width:auto}.del{border:0;background:transparent;color:var(--red);font-size:17px;cursor:pointer}.right{display:flex;flex-direction:column;gap:18px}.canvas-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.canvas-head h2{margin:0 0 3px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:15px 0}.metric{background:#f7f9fa;border:1px solid #e7edef;border-radius:11px;padding:11px;min-width:0}.metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.03em}.metric strong{display:block;margin-top:3px;font-size:20px;letter-spacing:-.5px;overflow-wrap:anywhere}.sheets{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:13px}.sheet-card{border:1px solid var(--line);border-radius:12px;padding:11px;min-width:0;break-inside:avoid}.sheet-title{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:12px;margin-bottom:8px}.sheet-title small{font-size:11px;font-weight:550;color:var(--muted)}svg.layout{display:block;width:100%;height:auto;background:#f9fbfb;border:1px solid #cbd8dc;border-radius:6px}.piece{stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke}.piece-label{font-weight:800;fill:#193a35;text-anchor:middle;dominant-baseline:middle;pointer-events:none}.piece-dim{fill:#31564f;text-anchor:middle;pointer-events:none}.sheet-foot{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:var(--muted);font-size:10px}.piece-key{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px;margin-top:9px;padding-top:8px;border-top:1px solid #edf1f2}.piece-key span{font-size:10px;color:#40535b;overflow-wrap:anywhere}.piece-key b{color:#1e3935}.small-callouts{margin-top:9px;border-top:1px solid #dbe4e7;padding-top:8px}.small-callouts>strong{display:block;font-size:11px;margin-bottom:5px}.small-callouts table{width:100%;white-space:normal;font-size:11px}.small-callouts th{position:static}.small-callouts td,.small-callouts th{padding:5px 6px}.small-callouts td{overflow-wrap:anywhere}.empty{padding:64px 18px;text-align:center;color:var(--muted)}.empty b{display:block;font-size:16px;color:var(--ink);margin-bottom:5px}.notice{padding:12px;border-radius:10px;background:#f6f9fa;border:1px solid var(--line);font-size:12px;color:#485b63}.notice strong{color:var(--ink)}.legend{color:var(--muted);font-size:11px;margin-top:10px}.pill{display:inline-flex;align-items:center;gap:5px;background:#edf6f3;color:var(--green);padding:4px 8px;border-radius:99px;font-size:10px;font-weight:800}.progress{height:7px;border-radius:99px;background:#edf1f2;overflow:hidden;margin-top:9px}.progress>i{display:block;height:100%;width:0;background:var(--green);transition:width .2s}.footer{color:var(--muted);font-size:11px;text-align:center;margin:18px 0 2px}.hidden{display:none!important}@media(max-width:1050px){.grid{grid-template-columns:1fr}.shell{padding:14px}}@media(max-width:580px){.metrics{grid-template-columns:repeat(2,1fr)}.field-grid{grid-template-columns:1fr 1fr}.canvas-head{flex-direction:column}.sheets{grid-template-columns:1fr}.top{align-items:flex-start}.version{display:none}}
 @media print{body{background:#fff}.shell{max-width:none;padding:0}.top,.left-panel,.canvas-head button,.before-panel{display:none!important}.grid{display:block}.panel{border:0;box-shadow:none;padding:0}.metrics{grid-template-columns:repeat(4,1fr)}.sheets{grid-template-columns:1fr 1fr}.sheet-card{break-inside:avoid}.footer{display:none}}
 </style>
 </head>
@@ -15,22 +16,22 @@
 <div class="shell">
   <header class="top">
     <div class="brand"><div class="logo">C</div><div><h1>CutPlan</h1><p>Cutting-list to optimized sheet layout</p></div></div>
-    <span class="version">MVP v0.3 · Multi-start optimizer</span>
+    <span class="version">v0.4.1 · Guillotine optimizer</span>
   </header>
   <div class="grid">
     <section class="panel left-panel">
       <h2>1. Cutting list</h2>
       <p class="sub">Upload a printed list, import CSV, or enter rows. Every row keeps its original reference number.</p>
-      <div class="tabs"><button id="tabImage" class="active" type="button">Image / OCR</button><button id="tabCsv" type="button">CSV import</button><button id="tabManual" type="button">Manual</button></div>
+      <div class="tabs"><button id="tabImage" class="active" type="button">PDF / Image</button><button id="tabCsv" type="button">CSV import</button><button id="tabManual" type="button">Manual</button></div>
       <div id="imagePane">
-        <div class="drop"><div style="font-size:25px">▧</div><strong>Upload a cutting-list image</strong><small>Printed tables work best · JPG, PNG</small><input id="imageFile" type="file" accept="image/*"></div>
-        <div class="actions"><button class="btn secondary" id="ocrBtn" disabled>Read image</button></div>
+        <div class="drop"><div style="font-size:25px">▧</div><strong>Upload a cutting-list PDF or image</strong><small>Digital PDFs use text extraction; scanned PDFs use OCR · PDF, JPG, PNG</small><input id="imageFile" type="file" accept="application/pdf,.pdf,image/*"></div>
+        <div class="actions"><button class="btn secondary" id="ocrBtn" disabled>Read PDF / image</button></div>
         <div class="progress"><i id="ocrProgress"></i></div><div class="status" id="ocrStatus">OCR text is only a draft. You must review every extracted row.</div>
-        <label class="field" style="display:block;margin-top:10px"><span style="display:block;font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px">Recognized text (editable before parsing)</span><textarea id="ocrText" placeholder="Rows should look like: 1  470  300  2  Yes"></textarea></label>
+        <label class="field" style="display:block;margin-top:10px"><span style="display:block;font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px">Recognized text (editable before parsing)</span><textarea id="ocrText" placeholder="Rows can use numeric or letter refs, e.g. A 470 300 2 Yes"></textarea></label>
         <div class="actions"><button class="btn" id="parseOcr">Parse rows</button><button class="btn ghost" id="clearOcr">Clear text</button></div>
       </div>
       <div id="csvPane" class="hidden">
-        <p class="sub">Preferred CSV columns: row_id,length,width,quantity,rotation. Also accepts the older length,width,quantity,rotation,name format.</p>
+        <p class="sub">Preferred CSV columns: row_id,length,width,quantity,rotation,band_top,band_right,band_bottom,band_left. References may contain letters, e.g. A, KB, CAB-A1.</p>
         <textarea id="csvText" placeholder="row_id,length,width,quantity,rotation&#10;1,470,300,2,yes&#10;2,700,300,4,yes"></textarea>
         <div class="actions"><button class="btn" id="importCsv">Import CSV</button><button class="btn secondary" id="downloadTemplate">Download template</button><button class="btn ghost" id="loadBenchmark">Load my 27-row test list</button></div>
       </div>
@@ -40,7 +41,7 @@
       </div>
 
       <div class="parts-head"><h3>ROWS <small id="rowSummary">0 rows · 0 pieces</small></h3><button class="btn ghost" id="clearRows" style="padding:7px 10px">Clear list</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Ref</th><th>Length</th><th>Width</th><th>Qty</th><th>Rotate</th><th></th></tr></thead><tbody id="partsBody"><tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">No rows yet. Upload a list or add a row.</td></tr></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>Ref</th><th>Length</th><th>Width</th><th>Qty</th><th>Rotate</th><th>Band T</th><th>R</th><th>B</th><th>L</th><th></th></tr></thead><tbody id="partsBody"><tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No rows yet. Upload a list or add a row.</td></tr></tbody></table></div>
 
       <h2 style="margin-top:20px">2. Sheet & cut settings</h2>
       <div class="field-grid">
@@ -48,16 +49,16 @@
         <div class="field"><label for="sheetW">Sheet width (mm)</label><input id="sheetW" type="number" min="1" placeholder="Enter sheet width"></div>
         <div class="field"><label for="kerf">Blade kerf (mm)</label><input id="kerf" type="number" min="0" step="0.1" placeholder="Unknown"></div>
         <div class="field"><label for="margin">Edge margin (mm)</label><input id="margin" type="number" min="0" step="1" value="0"></div>
-        <div class="field" style="grid-column:1/-1"><label for="effort">Optimization search effort</label><select id="effort"><option value="standard">Standard · 12 strategies</option><option value="high" selected>High · 32 strategies</option><option value="max">Maximum · 48 strategies</option></select></div>
+        <div class="field" style="grid-column:1/-1"><label for="effort">Optimization search effort</label><select id="effort"><option value="standard">Standard · 12 search starts</option><option value="high" selected>High · 64 search starts</option><option value="max">Maximum · 240 search starts</option></select></div>
       </div>
-      <div class="hint"><strong>Kerf:</strong> enter the measured blade width. If left blank, the layout is provisional and assumes 0 mm kerf. The optimizer reserves a conservative kerf clearance between parts; the drawing labels show true part dimensions.</div>
+      <div class="hint"><strong>Kerf:</strong> enter the measured blade width. If left blank, the layout is provisional and assumes 0 mm kerf. The v0.4 engine uses multi-stage guillotine splits: each placement is isolated with full straight horizontal/vertical cuts. Select edge banding per row using T/R/B/L columns.</div>
       <div class="actions"><button class="btn" id="optimize" style="flex:1">Optimize layout</button><button class="btn secondary" id="exportCsv">Export validated rows</button></div>
       <div class="status" id="mainStatus" aria-live="polite"></div>
     </section>
 
     <div class="right">
       <section class="panel">
-        <div class="canvas-head"><div><h2>3. Optimized sheet layout</h2><p class="sub" style="margin:2px 0 0">Labels use your cutting-list row reference and piece number, so you can match every cut back to the source row.</p></div><button class="btn secondary" id="printBtn" disabled>Print / Save PDF</button></div>
+        <div class="canvas-head"><div><h2>3. Optimized sheet layout</h2><p class="sub" style="margin:2px 0 0">Vertical board view · monochrome technical drawing · original row references.</p></div><button class="btn secondary" id="printBtn" disabled>Print / Save PDF</button></div>
         <div class="metrics">
           <div class="metric"><span>Sheets used</span><strong id="mSheets">—</strong></div>
           <div class="metric"><span>Pieces placed</span><strong id="mPieces">—</strong></div>
@@ -65,7 +66,7 @@
           <div class="metric"><span>Waste area</span><strong id="mWaste">—</strong></div>
         </div>
         <div id="layoutArea" class="empty"><b>Your layout will appear here</b>Start with your cutting list, confirm the sheet size and run optimization.</div>
-        <div class="legend">Each rectangle is one physical piece. Example: <strong>#13 · 1/2</strong> means the first of two pieces from row 13. Dimensions shown are the actual cut dimensions, including rotation where used.</div>
+        <div class="legend">Monochrome vertical board drawings. Labels use original cutting-list row references; thick black edges indicate selected edge banding.</div>
       </section>
       <section class="panel before-panel">
         <h2>4. Validation & production notes</h2>
@@ -115,24 +116,23 @@ function invalidatePlan() {
 function renderRows() {
   $('rowSummary').textContent = `${rows.length} rows · ${pieceTotal()} pieces`;
   if (!rows.length) {
-    $('partsBody').innerHTML = '<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">No rows yet. Upload a list or add a row.</td></tr>';
+    $('partsBody').innerHTML = '<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--muted)">No rows yet. Upload a list or add a row.</td></tr>';
     return;
   }
-  $('partsBody').innerHTML = rows.map((r, i) => `<tr data-i="${i}">
+  $('partsBody').innerHTML = rows.map((r, i) => { const b=r.edgeBanding||{}; return `<tr data-i="${i}">
     <td><input class="ref" type="text" data-k="rowId" value="${escapeHtml(r.rowId)}" aria-label="Row reference"></td>
     <td><input type="number" min="0.1" step="0.1" data-k="length" value="${escapeHtml(r.length)}" aria-label="Length"></td>
     <td><input type="number" min="0.1" step="0.1" data-k="width" value="${escapeHtml(r.width)}" aria-label="Width"></td>
     <td><input type="number" min="1" step="1" data-k="qty" value="${escapeHtml(r.qty)}" aria-label="Quantity"></td>
-    <td style="text-align:center"><input type="checkbox" data-k="rotate" ${r.rotate ? 'checked' : ''} aria-label="Allow rotation"></td>
+    <td><input type="checkbox" data-k="rotate" ${r.rotate ? 'checked' : ''} aria-label="Allow rotation"></td>
+    ${['top','right','bottom','left'].map(k=>`<td><input type="checkbox" data-band="${k}" ${b[k]?'checked':''} aria-label="Band ${k}"></td>`).join('')}
     <td><button class="del" data-del="${i}" title="Delete row" aria-label="Delete row">×</button></td>
-  </tr>`).join('');
+  </tr>`; }).join('');
   $('partsBody').querySelectorAll('input').forEach(input => input.addEventListener('change', e => {
-    const tr = e.target.closest('tr');
-    const i = Number(tr.dataset.i);
-    const key = e.target.dataset.k;
-    rows[i][key] = key === 'rotate' ? e.target.checked : key === 'rowId' ? e.target.value.trim() : Number(e.target.value);
-    $('rowSummary').textContent = `${rows.length} rows · ${pieceTotal()} pieces`;
-    invalidatePlan();
+    const tr=e.target.closest('tr'),i=Number(tr.dataset.i),key=e.target.dataset.k;
+    if(e.target.dataset.band){rows[i].edgeBanding=rows[i].edgeBanding||{};rows[i].edgeBanding[e.target.dataset.band]=e.target.checked;}
+    else rows[i][key]=key==='rotate'?e.target.checked:key==='rowId'?e.target.value.trim():Number(e.target.value);
+    $('rowSummary').textContent=`${rows.length} rows · ${pieceTotal()} pieces`;invalidatePlan();
   }));
   $('partsBody').querySelectorAll('[data-del]').forEach(button => button.addEventListener('click', () => {
     rows.splice(Number(button.dataset.del), 1); renderRows(); invalidatePlan();
@@ -140,7 +140,7 @@ function renderRows() {
 }
 function addRow(data = {}) {
   rows.push({ rowId: data.rowId ?? nextRowId(), length: data.length ?? 600, width: data.width ?? 400,
-    qty: data.qty ?? 1, rotate: data.rotate ?? true });
+    qty: data.qty ?? 1, rotate: data.rotate ?? true, edgeBanding: data.edgeBanding || {top:false,right:false,bottom:false,left:false} });
   renderRows(); invalidatePlan();
 }
 $('addRow').onclick = () => addRow();
@@ -171,31 +171,29 @@ function parseOcrRows(text) {
     if (!line) continue;
     const lower = line.toLowerCase();
     if (/cutting\s*list|length|width|quantity|rotation|\bqty\b|\bmm\b/.test(lower)) continue;
-    const nums = parseNumericTokens(line);
-    if (nums.length < 3) continue;
-    let rowId, length, width, qty;
-    // Table format: row number, length, width, quantity, rotation.
-    // Do not blindly take the first three numbers: the first is often the row number.
-    const firstLooksLikeRow = Number.isInteger(nums[0]) && nums[0] >= 1 && nums[0] <= 500 && nums.length >= 4;
-    if (firstLooksLikeRow) [rowId, length, width, qty] = nums;
-    else { rowId = output.length + 1; [length, width, qty] = nums; }
-    const valid = Number.isInteger(rowId) && rowId > 0 && length >= 20 && length <= 100000 && width >= 20 && width <= 100000 && Number.isInteger(qty) && qty >= 1 && qty <= 10000;
-    if (!valid) { rejected.push(line); continue; }
-    let rotate = true;
-    if (/\b(no|false|fixed|cannot)\b/i.test(line)) rotate = false;
-    else if (/\b(yes|true|rotate)\b/i.test(line)) rotate = true;
-    const key = String(rowId);
-    if (seen.has(key)) { rejected.push(line); continue; }
-    seen.add(key);
-    output.push({ rowId: key, length, width, qty, rotate });
+    // OCR supports row references such as 1, A, KB, CAB-A1 or B_02.
+    const tokens = line.match(/[A-Za-z][A-Za-z0-9._-]*|#?\d+(?:[.,]\d+)?|yes|no|true|false|fixed/gi) || [];
+    if (tokens.length < 3) continue;
+    let rowId, valueTokens = tokens;
+    const first = tokens[0].replace(/^#/, '').replace(/[.,]$/, '');
+    const isReference = /^[A-Za-z][A-Za-z0-9._-]*$/.test(first) || /^\d+[A-Za-z]?$/.test(first);
+    if (isReference && tokens.length >= 4) { rowId = first; valueTokens = tokens.slice(1); }
+    else rowId = String(output.length + 1);
+    const nums = valueTokens.filter(t => /^\d+(?:[.,]\d+)?$/.test(t)).map(t => Number(t.replace(',', '.')));
+    if (nums.length < 3) { rejected.push(line); continue; }
+    const [length, width, qty] = nums;
+    const valid = length >= 1 && length <= 100000 && width >= 1 && width <= 100000 && Number.isInteger(qty) && qty >= 1 && qty <= 10000;
+    if (!valid || seen.has(rowId.toLowerCase())) { rejected.push(line); continue; }
+    const rotate = !/\b(no|false|fixed|cannot)\b/i.test(line);
+    seen.add(rowId.toLowerCase());
+    output.push({ rowId, length, width, qty, rotate, edgeBanding:{top:false,right:false,bottom:false,left:false} });
   }
   return { rows: output, rejected };
 }
-
 $('imageFile').onchange = e => {
   imageFile = e.target.files?.[0] || null;
   $('ocrBtn').disabled = !imageFile;
-  $('ocrStatus').textContent = imageFile ? `Selected: ${imageFile.name}. Click Read image.` : 'OCR text is only a draft. Review every extracted row.';
+  $('ocrStatus').textContent = imageFile ? `Selected: ${imageFile.name}. Click Read PDF / image.` : 'Extracted text is only a draft. Review every row.';
 };
 async function preprocessImage(file) {
   const bitmap = await createImageBitmap(file);
@@ -214,25 +212,69 @@ async function preprocessImage(file) {
   bitmap.close?.();
   return canvas;
 }
+function pdfPageTextToLines(textContent) {
+  const items = (textContent.items || []).filter(item => item.str && item.str.trim()).map(item => ({
+    text: item.str.trim(), x: item.transform?.[4] || 0, y: item.transform?.[5] || 0
+  })).sort((a,b) => b.y-a.y || a.x-b.x);
+  const lines = [];
+  for (const item of items) {
+    let line = lines.find(candidate => Math.abs(candidate.y-item.y) <= 3.2);
+    if (!line) { line = { y:item.y, items:[] }; lines.push(line); }
+    line.items.push(item);
+  }
+  return lines.sort((a,b)=>b.y-a.y).map(line => line.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join(' ')).join('\n');
+}
+async function readPdf(file) {
+  if (!window.pdfjsLib) throw new Error('PDF reader did not load. Check your internet connection, then reload CutPlan.');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const digitalPages = [];
+  for (let pageNo=1; pageNo<=pdf.numPages; pageNo++) {
+    $('ocrStatus').textContent = `Reading PDF text · page ${pageNo}/${pdf.numPages}`;
+    const page = await pdf.getPage(pageNo);
+    const text = pdfPageTextToLines(await page.getTextContent());
+    digitalPages.push(text);
+  }
+  const digitalText = digitalPages.join('\n\n');
+  const digitalRows = parseOcrRows(digitalText).rows.length;
+  if (digitalRows > 0) return { text:digitalText, method:'PDF text extraction', pages:pdf.numPages };
+  if (!window.Tesseract) throw new Error('This PDF appears scanned and the OCR library did not load. Check internet access.');
+  let scannedText = '';
+  for (let pageNo=1; pageNo<=pdf.numPages; pageNo++) {
+    $('ocrStatus').textContent = `Scanned PDF detected · OCR page ${pageNo}/${pdf.numPages}`;
+    const page = await pdf.getPage(pageNo);
+    const viewport = page.getViewport({ scale:2.2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvasContext:canvas.getContext('2d'), viewport }).promise;
+    const result = await Tesseract.recognize(canvas, 'eng', { logger:m=>{ if(m.progress) $('ocrProgress').style.width=`${Math.round(m.progress*100)}%`; } });
+    scannedText += `\n${result.data.text || ''}`;
+    canvas.width=canvas.height=1;
+  }
+  return { text:scannedText, method:'PDF page rendering + OCR', pages:pdf.numPages };
+}
 $('ocrBtn').onclick = async () => {
   if (!imageFile) return;
-  if (!window.Tesseract) { $('ocrStatus').textContent = 'OCR library did not load. Check your internet connection or use CSV/manual input.'; return; }
-  $('ocrBtn').disabled = true; $('ocrProgress').style.width = '0%'; $('ocrStatus').textContent = 'Preprocessing image…';
+  $('ocrBtn').disabled = true; $('ocrProgress').style.width='0%';
   try {
-    const processed = await preprocessImage(imageFile);
-    const result = await Tesseract.recognize(processed, 'eng', {
-      logger: msg => {
-        if (msg.status) $('ocrStatus').textContent = `${msg.status}${msg.progress ? ` · ${Math.round(msg.progress * 100)}%` : ''}`;
-        if (typeof msg.progress === 'number') $('ocrProgress').style.width = `${Math.round(msg.progress * 100)}%`;
-      },
-      tessedit_pageseg_mode: 6,
-      preserve_interword_spaces: '1'
-    });
-    $('ocrText').value = result.data.text || '';
-    $('ocrStatus').textContent = `OCR complete · confidence ${Math.round(result.data.confidence || 0)}%. Review the recognized text, then parse rows.`;
-  } catch (error) {
-    $('ocrStatus').textContent = `OCR failed: ${error.message}`;
-  } finally { $('ocrBtn').disabled = false; }
+    let resultText='', method='';
+    if (imageFile.type==='application/pdf' || imageFile.name.toLowerCase().endsWith('.pdf')) {
+      const result = await readPdf(imageFile); resultText=result.text; method=result.method;
+    } else {
+      if (!window.Tesseract) throw new Error('OCR library did not load. Check your internet connection.');
+      $('ocrStatus').textContent='Preprocessing image…';
+      const processed=await preprocessImage(imageFile);
+      const result=await Tesseract.recognize(processed,'eng',{logger:msg=>{
+        if(msg.status) $('ocrStatus').textContent=`${msg.status}${msg.progress?` · ${Math.round(msg.progress*100)}%`:''}`;
+        if(typeof msg.progress==='number') $('ocrProgress').style.width=`${Math.round(msg.progress*100)}%`;
+      },tessedit_pageseg_mode:6,preserve_interword_spaces:'1'});
+      resultText=result.data.text||''; method=`Image OCR · confidence ${Math.round(result.data.confidence||0)}%`;
+    }
+    $('ocrText').value=resultText;
+    const found=parseOcrRows(resultText).rows.length;
+    $('ocrStatus').textContent=`${method} complete. ${found} possible row(s) detected. Review extracted values, then parse rows.`;
+  } catch(error) { $('ocrStatus').textContent=`File reading failed: ${error.message}`; }
+  finally { $('ocrBtn').disabled=false; }
 };
 $('parseOcr').onclick = () => {
   const parsed = parseOcrRows($('ocrText').value);
@@ -257,26 +299,26 @@ function parseCsvLine(line) {
   return cells;
 }
 $('importCsv').onclick = () => {
-  const imported = [];
-  for (const [lineIndex, line] of $('csvText').value.split(/\r?\n/).entries()) {
+  const imported = [], seen = new Set();
+  for (const [lineIndex,line] of $('csvText').value.split(/\r?\n/).entries()) {
     if (!line.trim()) continue;
-    const c = parseCsvLine(line);
-    if (lineIndex === 0 && /row|length|width|qty|quantity/i.test(line)) continue;
+    const c=parseCsvLine(line);
+    if (lineIndex===0 && /row|length|width|qty|quantity/i.test(line)) continue;
+    const isRotation = value => /^(yes|no|true|false|0|1|fixed)$/i.test(value||'');
+    const validRef = value => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value||'');
     let row;
-    if (c.length >= 5 && /^\d+$/.test(c[0]) && /^(yes|no|true|false|0|1|fixed)$/i.test(c[4])) {
-      row = { rowId: c[0], length: Number(c[1]), width: Number(c[2]), qty: Number(c[3]), rotate: !/^(no|false|0|fixed)$/i.test(c[4]) };
-    } else if (c.length >= 4) {
-      // Compatibility with earlier MVP CSV: length,width,quantity,rotation[,name].
-      row = { rowId: String(imported.length + 1), length: Number(c[0]), width: Number(c[1]), qty: Number(c[2]), rotate: !/^(no|false|0|fixed)$/i.test(c[3]) };
+    if (c.length>=5 && validRef(c[0]) && isRotation(c[4])) {
+      row={rowId:c[0],length:Number(c[1]),width:Number(c[2]),qty:Number(c[3]),rotate:!/^(no|false|0|fixed)$/i.test(c[4]),edgeBanding:{top:/^(1|yes|true)$/i.test(c[5]||''),right:/^(1|yes|true)$/i.test(c[6]||''),bottom:/^(1|yes|true)$/i.test(c[7]||''),left:/^(1|yes|true)$/i.test(c[8]||'')}};
+    } else if (c.length>=4 && isRotation(c[3])) {
+      row={rowId:String(imported.length+1),length:Number(c[0]),width:Number(c[1]),qty:Number(c[2]),rotate:!/^(no|false|0|fixed)$/i.test(c[3]),edgeBanding:{top:false,right:false,bottom:false,left:false}};
     }
-    if (row && row.length > 0 && row.width > 0 && Number.isInteger(row.qty) && row.qty > 0) imported.push(row);
+    if(row && validRef(row.rowId) && row.length>0 && row.width>0 && Number.isInteger(row.qty) && row.qty>0 && !seen.has(row.rowId.toLowerCase())) { imported.push(row); seen.add(row.rowId.toLowerCase()); }
   }
-  if (!imported.length) { setStatus('mainStatus', 'No valid CSV rows found. Use row_id,length,width,quantity,rotation.', true); return; }
-  rows = imported; renderRows(); invalidatePlan();
-  $('mainStatus').textContent = `Imported ${rows.length} rows / ${pieceTotal()} pieces. Review values before optimizing.`;
+  if(!imported.length){setStatus('mainStatus','No valid CSV rows found, or references are duplicated. Use row_id,length,width,quantity,rotation.',true);return;}
+  rows=imported;renderRows();invalidatePlan();$('mainStatus').textContent=`Imported ${rows.length} rows / ${pieceTotal()} pieces. Letter references and optional edge-band columns were retained. Review values before optimizing.`;
 };
 $('downloadTemplate').onclick = () => {
-  const csv = 'row_id,length,width,quantity,rotation\n1,470,300,2,yes\n2,700,300,4,yes\n';
+  const csv = 'row_id,length,width,quantity,rotation,band_top,band_right,band_bottom,band_left\nA,470,300,2,yes,no,no,no,no\nKB,700,300,4,yes,yes,no,no,yes\n';
   downloadBlob(csv, 'cutplan-template.csv', 'text/csv');
 };
 function downloadBlob(content, filename, type) {
@@ -286,7 +328,7 @@ function downloadBlob(content, filename, type) {
 }
 $('exportCsv').onclick = () => {
   if (!rows.length) { setStatus('mainStatus', 'There are no rows to export.', true); return; }
-  const lines = ['row_id,length,width,quantity,rotation', ...rows.map(r => [r.rowId,r.length,r.width,r.qty,r.rotate ? 'yes' : 'no'].join(','))];
+  const lines = ['row_id,length,width,quantity,rotation,band_top,band_right,band_bottom,band_left', ...rows.map(r => [r.rowId,r.length,r.width,r.qty,r.rotate?'yes':'no',...( ['top','right','bottom','left'].map(k=>r.edgeBanding?.[k]?'yes':'no') )].join(','))];
   downloadBlob(lines.join('\n'), 'cutplan-validated-list.csv', 'text/csv');
 };
 
@@ -295,35 +337,42 @@ function setStatus(id, message, error = false) {
 }
 function fmtArea(mm2) { return (mm2 / 1e6).toFixed(3) + ' m²'; }
 function renderPlan(plan) {
-  $('mSheets').textContent = plan.sheets.length;
-  $('mPieces').textContent = plan.pieces;
-  $('mUtil').textContent = plan.utilization.toFixed(1) + '%';
-  $('mWaste').textContent = fmtArea(plan.wasteArea);
-  $('layoutArea').className = '';
-  const cardHtml = plan.sheets.map((sheet, sheetIndex) => {
-    const shapes = sheet.placed.map((p, idx) => {
-      const ref = `#${p.rowId} · ${p.unit}/${p.rowQty}`;
-      const color = colors[(Number(String(p.rowId).replace(/\D/g,'')) || sheetIndex + idx) % colors.length];
-      const minSide = Math.min(p.w, p.h);
-      const labelSize = Math.max(14, Math.min(58, minSide * .22));
-      const dimSize = Math.max(11, Math.min(36, minSide * .14));
-      const centerX = p.x + p.w / 2, centerY = p.y + p.h / 2;
-      const readableInside = minSide >= 125 && p.w >= 150 && p.h >= 125;
-      const labelY = centerY - dimSize * .48;
-      const dimY = centerY + dimSize * .9;
-      const dim = `${p.w} × ${p.h}`;
-      return `<g><rect class="piece" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="${color}"/>` +
-        (readableInside ? `<text class="piece-label" x="${centerX}" y="${labelY}" font-size="${labelSize}">${escapeHtml(ref)}</text><text class="piece-dim" x="${centerX}" y="${dimY}" font-size="${dimSize}">${escapeHtml(dim)}</text>` : '') + `</g>`;
+  $('mSheets').textContent=plan.sheets.length; $('mPieces').textContent=plan.pieces;
+  $('mUtil').textContent=plan.utilization.toFixed(1)+'%'; $('mWaste').textContent=fmtArea(plan.wasteArea);
+  $('layoutArea').className='';
+  const cardHtml=plan.sheets.map((sheet,si)=>{
+    const callouts=[];
+    const shapes=sheet.placed.map(p=>{
+      // Existing guillotine coordinates are only rotated for a portrait sheet drawing.
+      const x=plan.sheetWidth-(p.y+p.h), y=p.x, w=p.h, h=p.w, band=p.edgeBanding||{};
+      const ref=String(p.rowId), dim=`${p.length} × ${p.width} mm${p.rotated?' · rotated':''}`;
+      const refFont=36, dimFont=27;
+      const requiredWidth=Math.max(ref.length*refFont*.66+24,dim.length*dimFont*.54+24);
+      const canLabel=w>=requiredWidth && h>=112;
+      if(!canLabel){
+        const key=`${ref}¦${p.length}¦${p.width}¦${p.rotated?'rot':'fixed'}`;
+        const existing=callouts.find(c=>c.key===key);
+        if(existing) existing.qty++; else callouts.push({key,ref,dim,qty:1,band:Object.keys(band).filter(k=>band[k]).map(k=>k[0].toUpperCase()).join('')||'—'});
+      }
+      const bandLines=[
+        band.top?`<line x1="${x}" y1="${y}" x2="${x+w}" y2="${y}" stroke="#111" stroke-width="9" vector-effect="non-scaling-stroke"/>`:'',
+        band.right?`<line x1="${x+w}" y1="${y}" x2="${x+w}" y2="${y+h}" stroke="#111" stroke-width="9" vector-effect="non-scaling-stroke"/>`:'',
+        band.bottom?`<line x1="${x}" y1="${y+h}" x2="${x+w}" y2="${y+h}" stroke="#111" stroke-width="9" vector-effect="non-scaling-stroke"/>`:'',
+        band.left?`<line x1="${x}" y1="${y}" x2="${x}" y2="${y+h}" stroke="#111" stroke-width="9" vector-effect="non-scaling-stroke"/>`:''
+      ].join('');
+      const labels=canLabel?`<text x="${x+w/2}" y="${y+42}" text-anchor="middle" font-size="${refFont}" fill="#111" font-weight="700">${escapeHtml(ref)}</text><text x="${x+w/2}" y="${y+h-18}" text-anchor="middle" font-size="${dimFont}" fill="#111">${escapeHtml(dim)}</text>`:'';
+      return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff" stroke="#111" stroke-width="2" vector-effect="non-scaling-stroke"/>${bandLines}${labels}</g>`;
     }).join('');
-    const partArea = sheet.placed.reduce((sum,p)=>sum+p.w*p.h,0);
-    const pieceKey = sheet.placed.map(p => `<span><b>#${escapeHtml(p.rowId)} · ${p.unit}/${p.rowQty}</b> — ${p.w} × ${p.h} mm${p.rotated ? ' ↻' : ''}</span>`).join('');
-    return `<article class="sheet-card"><div class="sheet-title"><span>Sheet ${sheetIndex+1}</span><small>${plan.sheetLength} × ${plan.sheetWidth} mm</small></div>`+
-      `<svg class="layout" viewBox="0 0 ${plan.sheetLength} ${plan.sheetWidth}" role="img" aria-label="Sheet ${sheetIndex+1} cutting layout"><rect x="0" y="0" width="${plan.sheetLength}" height="${plan.sheetWidth}" fill="#fff" stroke="#344c56" stroke-width="6"/>${shapes}</svg>`+
-      `<div class="sheet-foot"><span>${sheet.placed.length} pieces</span><span>${fmtArea(partArea)} part area</span></div><div class="piece-key">${pieceKey}</div></article>`;
+    const cuts=sheet.cuts.map(c=>{
+      if(c.axis==='vertical'){const x1=plan.sheetWidth-(c.y+c.length),x2=plan.sheetWidth-c.y,yy=c.x;return `<line x1="${x1}" y1="${yy}" x2="${x2}" y2="${yy}" stroke="#555" stroke-width="1.5" stroke-dasharray="9 7" vector-effect="non-scaling-stroke"/>`;}
+      const xx=plan.sheetWidth-c.y;return `<line x1="${xx}" y1="${c.x}" x2="${xx}" y2="${c.x+c.length}" stroke="#555" stroke-width="1.5" stroke-dasharray="9 7" vector-effect="non-scaling-stroke"/>`;
+    }).join('');
+    const calloutHtml=callouts.length?`<div class="small-callouts"><strong>Small-piece dimensions — kept outside the board to prevent collisions</strong><table><thead><tr><th>Reference</th><th>Length × width</th><th>Qty on board</th><th>Banding</th></tr></thead><tbody>${callouts.map(c=>`<tr><td><b>${escapeHtml(c.ref)}</b></td><td>${escapeHtml(c.dim)}</td><td>${c.qty}</td><td>${escapeHtml(c.band)}</td></tr>`).join('')}</tbody></table></div>`:'';
+    const verticalView=`<svg class="layout" viewBox="0 0 ${plan.sheetWidth} ${plan.sheetLength}" role="img" aria-label="Vertical board ${si+1}"><rect x="0" y="0" width="${plan.sheetWidth}" height="${plan.sheetLength}" fill="#fff" stroke="#111" stroke-width="5" vector-effect="non-scaling-stroke"/>${shapes}${cuts}</svg>`;
+    return `<article class="sheet-card"><div class="sheet-title"><span>BOARD ${si+1}</span><small>${plan.sheetLength} × ${plan.sheetWidth} mm</small></div>${verticalView}${calloutHtml}</article>`;
   }).join('');
-  $('layoutArea').innerHTML = `<div class="sheets">${cardHtml}</div>`;
-  const kerfMessage = plan.kerf > 0 ? `Kerf clearance: ${plan.kerf} mm (conservative trailing-edge allowance).` : 'Kerf is 0 mm in this calculation; confirm the actual blade kerf before production.';
-  $('warnings').innerHTML = `<span class="pill">All ${plan.pieces} pieces placed and geometry validated</span><p><strong>Search:</strong> ${plan.attempts} layout strategies · best combination: ${escapeHtml(plan.ordering)} order + ${escapeHtml(plan.scorer)} placement score.</p><p>${escapeHtml(kerfMessage)}</p><p>Sheet: ${plan.sheetLength} × ${plan.sheetWidth} mm · Edge margin: ${plan.margin} mm · Part area: ${fmtArea(plan.partArea)} · Total sheet area: ${fmtArea(plan.grossSheetArea)}.</p><p><strong>Machine note:</strong> this is general rectangular nesting. It does not yet generate a verified guillotine saw-cut sequence or account for grain direction, defects, clamps, edging or panel-specific restrictions.</p>`;
+  $('layoutArea').innerHTML=`<div class="sheets">${cardHtml}</div>`;
+  $('warnings').innerHTML=`<span class="pill">${plan.pieces} pieces · guillotine geometry validated</span><p><strong>Mode:</strong> ${escapeHtml(plan.cutMode)} · ${plan.attempts} search starts · ${escapeHtml(plan.scorer||'short')} placement score.</p><p>All parts remain in rectangular regions. The guillotine split and cut-generation rules are unchanged in this update. Labels are placed inside only when there is room; small parts receive a separate non-overlapping dimension schedule.</p><p>Sheet ${plan.sheetLength} × ${plan.sheetWidth} mm · Kerf ${plan.kerf} mm · Margin ${plan.margin} mm · Utilization ${plan.utilization.toFixed(1)}%.</p><p>Edge banding: top/right/bottom/left selections are carried with each part and remapped on rotation.</p>`;
 }
 $('optimize').onclick = () => {
   try {
@@ -334,16 +383,16 @@ $('optimize').onclick = () => {
     const kerf = kerfKnown ? Number($('kerf').value) : 0;
     const margin = Number($('margin').value || 0);
     if (!Number.isFinite(kerf) || kerf < 0 || !Number.isFinite(margin) || margin < 0) throw new Error('Check kerf and edge margin values.');
-    setStatus('mainStatus', 'Searching multiple packing strategies…');
+    setStatus('mainStatus', 'Searching multi-stage guillotine cutting strategies…');
     $('optimize').disabled = true;
     // Defer computation so the progress text paints before the optimizer starts.
     setTimeout(() => {
       try {
-        const plan = CutPlanEngine.optimize(rows, { sheetLength, sheetWidth, kerf, margin, effort: $('effort').value });
+        const plan = CutPlanEngine.optimize(rows, { sheetLength, sheetWidth, kerf, margin, effort: $('effort').value, cutMode: $('cutMode').value });
         plan.kerfKnown = kerfKnown;
         lastPlan = plan; renderPlan(plan);
         $('printBtn').disabled = false;
-        setStatus('mainStatus', `Validated ${plan.pieces} pieces from ${plan.rows} rows across ${plan.sheets.length} sheet(s). Tested ${plan.attempts} strategies. ${kerfKnown ? 'Kerf allowance included.' : 'WARNING: provisional zero-kerf layout.'}`);
+        setStatus('mainStatus', `Guillotine plan validated: ${plan.pieces} pieces from ${plan.rows} rows across ${plan.sheets.length} board(s). Tested ${plan.attempts} strategies. ${kerfKnown ? 'Kerf allowance included.' : 'WARNING: provisional zero-kerf layout.'}`);
       } catch (error) { setStatus('mainStatus', error.message, true); }
       finally { $('optimize').disabled = false; }
     }, 40);

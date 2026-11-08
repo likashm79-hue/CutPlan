@@ -1,363 +1,126 @@
-/* CutPlan multi-start MaxRects nesting engine.
- * This is a heuristic 2D rectangle packer, not a proof of global optimality.
- * Parts are expanded on their trailing/right and bottom sides by the kerf to
- * reserve conservative cutting clearance. The drawing uses the true part size.
+/* CutPlan v0.4 — multi-start guillotine nesting.
+ * Every placement is made at the origin of a rectangular free region.
+ * The region is split by full straight cuts into two rectangular offcuts;
+ * no free-form/non-guillotine placement is permitted. Heuristic, not a proof
+ * of global optimality. Validate the generated cut sequence on the actual saw.
  */
-(function (root, factory) {
-  const api = factory();
-  if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.CutPlanEngine = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
-  'use strict';
-
-  const EPS = 1e-7;
-  const ORDERINGS = ['area', 'longSide', 'shortSide', 'perimeter', 'width', 'height', 'aspect', 'input'];
-  const SCORERS = ['bssf', 'baf', 'blsf', 'contact'];
-
-  function number(value, label, min = 0) {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < min) throw new Error(`${label} must be a number greater than or equal to ${min}.`);
-    return n;
-  }
-
-  function expandRows(rows) {
-    const items = [];
-    const seenIds = new Set();
-    rows.forEach((row, index) => {
-      const rowId = String(row.rowId ?? index + 1).trim();
-      if (!rowId) throw new Error(`Row ${index + 1} needs a reference number.`);
-      if (seenIds.has(rowId)) throw new Error(`Duplicate row reference #${rowId}. Each cutting-list row must have a unique reference.`);
-      seenIds.add(rowId);
-      const length = number(row.length, `Row #${rowId} length`, 0.001);
-      const width = number(row.width, `Row #${rowId} width`, 0.001);
-      const qty = number(row.qty, `Row #${rowId} quantity`, 1);
-      if (!Number.isInteger(qty)) throw new Error(`Row #${rowId} quantity must be a whole number.`);
-      if (length > 100000 || width > 100000 || qty > 10000) throw new Error(`Row #${rowId} contains an unusually large value. Check the data.`);
-      for (let unit = 1; unit <= qty; unit++) {
-        items.push({
-          rowId,
-          unit,
-          rowQty: qty,
-          length,
-          width,
-          rotate: Boolean(row.rotate),
-          inputIndex: index,
-          area: length * width,
-          maxSide: Math.max(length, width),
-          minSide: Math.min(length, width),
-          perimeter: 2 * (length + width),
-          aspect: Math.max(length, width) / Math.min(length, width)
-        });
-      }
-    });
-    if (!items.length) throw new Error('Add at least one valid cutting-list row.');
-    return items;
-  }
-
-  function intersects(a, b) {
-    return !(b.x >= a.x + a.w - EPS || b.x + b.w <= a.x + EPS ||
-      b.y >= a.y + a.h - EPS || b.y + b.h <= a.y + EPS);
-  }
-
-  function splitFreeRectangles(freeRects, used) {
-    const out = [];
-    for (const f of freeRects) {
-      if (!intersects(f, used)) {
-        out.push(f);
-        continue;
-      }
-      // Top and bottom strips.
-      if (used.y > f.y + EPS && used.y < f.y + f.h - EPS) {
-        out.push({ x: f.x, y: f.y, w: f.w, h: used.y - f.y });
-      }
-      if (used.y + used.h < f.y + f.h - EPS && used.y + used.h > f.y + EPS) {
-        out.push({ x: f.x, y: used.y + used.h, w: f.w, h: f.y + f.h - (used.y + used.h) });
-      }
-      // Left and right strips.
-      if (used.x > f.x + EPS && used.x < f.x + f.w - EPS) {
-        out.push({ x: f.x, y: f.y, w: used.x - f.x, h: f.h });
-      }
-      if (used.x + used.w < f.x + f.w - EPS && used.x + used.w > f.x + EPS) {
-        out.push({ x: used.x + used.w, y: f.y, w: f.x + f.w - (used.x + used.w), h: f.h });
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.CutPlanEngine=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
+'use strict'; const EPS=1e-7;
+const ORDER=['area','long','short','perimeter','input','width','length','aspect','areaPerimeter','longArea','shortArea','widthArea','lengthArea','areaShort','areaLong','maxSide','minSide','aspectInverse','square','longWidth','longLength','widthLength','lengthWidth','thinArea'];
+function n(v,label,min=0){const x=Number(v);if(!Number.isFinite(x)||x<min)throw Error(`${label} must be at least ${min}.`);return x;}
+function expandRows(rows){const out=[],ids=new Set();rows.forEach((r,i)=>{const id=String(r.rowId??i+1).trim();const idKey=id.toLowerCase();if(!id||ids.has(idKey))throw Error(`Missing or duplicate cutting-list reference: ${id||i+1}.`);ids.add(idKey);const l=n(r.length,`#${id} length`,.001),w=n(r.width,`#${id} width`,.001),q=n(r.qty,`#${id} quantity`,1);if(!Number.isInteger(q))throw Error(`#${id} quantity must be a whole number.`);for(let u=1;u<=q;u++)out.push({rowId:id,unit:u,rowQty:q,length:l,width:w,rotate:!!r.rotate,edgeBanding:r.edgeBanding||{top:false,right:false,bottom:false,left:false},area:l*w,inputIndex:i});});if(!out.length)throw Error('Add at least one cutting-list row.');return out;}
+function sortItems(items,key,reverse){
+  const metric = item => {
+    const long=Math.max(item.length,item.width), short=Math.min(item.length,item.width), area=item.area, perimeter=item.length+item.width;
+    switch(key){
+      case'area':return area;
+      case'long':case'maxSide':return long;
+      case'short':case'minSide':return short;
+      case'perimeter':return perimeter;
+      case'width':return item.width;
+      case'length':return item.length;
+      case'aspect':return long/short;
+      case'aspectInverse':return short/long;
+      case'areaPerimeter':return area*perimeter;
+      case'longArea':return long*area;
+      case'shortArea':return short*area;
+      case'widthArea':return item.width*area;
+      case'lengthArea':return item.length*area;
+      case'areaShort':return area/short;
+      case'areaLong':return area/long;
+      case'square':return 1/(long/short);
+      case'longWidth':return long*item.width;
+      case'longLength':return long*item.length;
+      case'widthLength':return item.width*item.length;
+      case'lengthWidth':return item.length*item.width;
+      case'thinArea':return (long/short)*area;
+      default:return area;
+    }
+  };
+  return items.slice().sort((a,b)=>{
+    if(key==='input') return ((a.inputIndex-b.inputIndex)||(a.unit-b.unit))*(reverse?-1:1);
+    const delta=metric(b)-metric(a);
+    return (Math.abs(delta)>EPS?delta*(reverse?-1:1):0)||a.inputIndex-b.inputIndex||a.unit-b.unit;
+  });
+}
+function seededShuffle(items,seed){
+  const out=items.slice(); let state=(seed>>>0)||1;
+  const random=()=>{state=(state*1664525+1013904223)>>>0;return state/4294967296;};
+  for(let i=out.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}
+  return out;
+}
+function edgeMap(b,rot){return rot?{top:b.left,right:b.top,bottom:b.right,left:b.bottom}:{...b};}
+function fits(item,free,cfg,mode){
+  const os=[{w:item.length,h:item.width,rot:false}];
+  if(item.rotate&&item.length!==item.width) os.push({w:item.width,h:item.length,rot:true});
+  const out=[];
+  for(const o of os){
+    const rw=o.w+(o.w<free.w-EPS?cfg.kerf:0), rh=o.h+(o.h<free.h-EPS?cfg.kerf:0);
+    if(rw<=free.w+EPS&&rh<=free.h+EPS){
+      const dw=free.w-rw, dh=free.h-rh;
+      const orient=mode==='width'?'H':mode==='length'?'V':(dw>=dh?'V':'H');
+      for(const cut of (mode==='optimum'?['V','H']:[orient])){
+        const rem1=cut==='V'?Math.max(0,free.w-rw)*free.h:free.w*Math.max(0,free.h-rh);
+        const rem2=cut==='V'?o.w*Math.max(0,free.h-rh):Math.max(0,free.w-rw)*o.h;
+        out.push({...o,rw,rh,cut,dw,dh,rem1,rem2,freeArea:free.w*free.h,partArea:o.w*o.h,score:[Math.min(dw,dh),Math.max(dw,dh),-(rem1+rem2),o.rot?1:0]});
       }
     }
-    return pruneFreeRectangles(out);
   }
-
-  function pruneFreeRectangles(rects) {
-    const clean = rects.filter(r => r.w > EPS && r.h > EPS);
-    for (let i = 0; i < clean.length; i++) {
-      for (let j = i + 1; j < clean.length; j++) {
-        const a = clean[i], b = clean[j];
-        const aContainsB = b.x >= a.x - EPS && b.y >= a.y - EPS &&
-          b.x + b.w <= a.x + a.w + EPS && b.y + b.h <= a.y + a.h + EPS;
-        const bContainsA = a.x >= b.x - EPS && a.y >= b.y - EPS &&
-          a.x + a.w <= b.x + b.w + EPS && a.y + a.h <= b.y + b.h + EPS;
-        if (aContainsB) {
-          clean.splice(j, 1); j--;
-        } else if (bContainsA) {
-          clean.splice(i, 1); i--; break;
-        }
-      }
-    }
-    return clean;
+  return out;
+}
+function placementScore(option,free,scorer){
+  const short=Math.min(option.dw,option.dh), long=Math.max(option.dw,option.dh);
+  const remnant=Math.max(option.rem1,option.rem2), tiny=Math.min(option.rem1,option.rem2);
+  switch(scorer){
+    case'area':return [option.freeArea-option.rw*option.rh,short,long,option.rot?1:0];
+    case'long':return [long,short,-remnant,tiny,option.rot?1:0];
+    case'remnant':return [-remnant,tiny,long,short,option.rot?1:0];
+    default:return [short,long,-(option.rem1+option.rem2),option.rot?1:0];
   }
-
-  function sortedItems(items, ordering, variant) {
-    const list = items.slice();
-    const sign = variant % 2 === 0 ? -1 : 1;
-    const secondarySign = variant % 3 === 0 ? 1 : -1;
-    const cmpDesc = (a, b, key) => (b[key] - a[key]) * sign;
-    list.sort((a, b) => {
-      let v = 0;
-      switch (ordering) {
-        case 'area': v = cmpDesc(a, b, 'area'); break;
-        case 'longSide': v = cmpDesc(a, b, 'maxSide'); break;
-        case 'shortSide': v = cmpDesc(a, b, 'minSide'); break;
-        case 'perimeter': v = cmpDesc(a, b, 'perimeter'); break;
-        case 'width': v = cmpDesc(a, b, 'width') || cmpDesc(a, b, 'length'); break;
-        case 'height': v = cmpDesc(a, b, 'length') || cmpDesc(a, b, 'width'); break;
-        case 'aspect': v = cmpDesc(a, b, 'aspect') || cmpDesc(a, b, 'area'); break;
-        case 'input': v = (a.inputIndex - b.inputIndex) * sign || (a.unit - b.unit) * secondarySign; break;
-      }
-      if (!v) v = (b.area - a.area) * secondarySign || (a.inputIndex - b.inputIndex) || a.unit - b.unit;
-      return v;
-    });
-    return list;
+}
+function cmp(a,b){for(let i=0;i<a.length;i++)if(Math.abs(a[i]-b[i])>EPS)return a[i]-b[i];return 0;}
+function pack(items,cfg,ordering,reverse,mode,seed=0,scorer='short'){const sheets=[];const ordered=ordering==='shuffle'?seededShuffle(items,seed):sortItems(items,ordering,reverse);for(const item of ordered){let best=null;for(let si=0;si<sheets.length;si++)for(let fi=0;fi<sheets[si].free.length;fi++){const f=sheets[si].free[fi];for(const o of fits(item,f,cfg,mode)){const cand={si,fi,x:f.x,y:f.y,...o};cand.rank=placementScore(cand,f,scorer);if(!best||cmp(cand.rank,best.rank)<0)best=cand;}}
+if(!best){const f={x:cfg.margin,y:cfg.margin,w:cfg.usableW,h:cfg.usableH};const opts=fits(item,f,cfg,mode).map(o=>({...o,rank:placementScore(o,f,scorer)}));if(!opts.length)throw Error(`#${item.rowId} (${item.length} × ${item.width}) cannot fit on the usable sheet.`);sheets.push({free:[f],placed:[],cuts:[]});const si=sheets.length-1;const o=opts.sort((a,b)=>cmp(a.rank,b.rank))[0];best={si,fi:0,x:f.x,y:f.y,...o};}
+const s=sheets[best.si],f=s.free.splice(best.fi,1)[0],p={rowId:item.rowId,unit:item.unit,rowQty:item.rowQty,length:item.length,width:item.width,x:f.x,y:f.y,w:best.w,h:best.h,rotated:best.rot,edgeBanding:edgeMap(item.edgeBanding,best.rot)};s.placed.push(p);
+// Record actual guillotine cuts within the current rectangular offcut.
+if(best.cut==='V'){const xcut=f.x+best.rw;s.cuts.push({axis:'vertical',x:xcut,y:f.y,length:f.h,kerf:cfg.kerf});const rightW=f.w-best.rw;if(rightW>EPS)s.free.push({x:xcut,y:f.y,w:rightW,h:f.h});const belowH=f.h-best.rh;if(belowH>EPS)s.free.push({x:f.x,y:f.y+best.rh,w:best.rw,h:belowH});if(belowH>EPS)s.cuts.push({axis:'horizontal',x:f.x,y:f.y+best.rh,length:best.rw,kerf:cfg.kerf});}
+else{const ycut=f.y+best.rh;s.cuts.push({axis:'horizontal',x:f.x,y:ycut,length:f.w,kerf:cfg.kerf});const belowH=f.h-best.rh;if(belowH>EPS)s.free.push({x:f.x,y:ycut,w:f.w,h:belowH});const rightW=f.w-best.rw;if(rightW>EPS)s.free.push({x:f.x+best.rw,y:f.y,w:rightW,h:best.rh});if(rightW>EPS)s.cuts.push({axis:'vertical',x:f.x+best.rw,y:f.y,length:best.rh,kerf:cfg.kerf});}
+}return sheets;}
+function validate(sheets,cfg,expected){let count=0;for(let si=0;si<sheets.length;si++){const s=sheets[si];count+=s.placed.length;for(let i=0;i<s.placed.length;i++){const a=s.placed[i];if(a.x<cfg.margin-EPS||a.y<cfg.margin-EPS||a.x+a.w>cfg.sheetLength-cfg.margin+EPS||a.y+a.h>cfg.sheetWidth-cfg.margin+EPS)throw Error('Guillotine validation: a part lies outside the usable sheet.');for(let j=i+1;j<s.placed.length;j++){const b=s.placed[j];if(a.x<b.x+b.w-EPS&&a.x+a.w>b.x+EPS&&a.y<b.y+b.h-EPS&&a.y+a.h>b.y+EPS)throw Error(`Guillotine validation: #${a.rowId} overlaps #${b.rowId}.`);}}for(const c of s.cuts){if(c.axis==='vertical'&&(c.x<cfg.margin-EPS||c.x>cfg.sheetLength-cfg.margin+EPS||c.y<cfg.margin-EPS||c.y+c.length>cfg.sheetWidth-cfg.margin+EPS))throw Error('Invalid vertical cut extent.');if(c.axis==='horizontal'&&(c.y<cfg.margin-EPS||c.y>cfg.sheetWidth-cfg.margin+EPS||c.x<cfg.margin-EPS||c.x+c.length>cfg.sheetLength-cfg.margin+EPS))throw Error('Invalid horizontal cut extent.');}}if(count!==expected)throw Error(`Only ${count} of ${expected} pieces were placed.`);return count;}
+function optimize(rows,opt={}){
+  const sheetLength=n(opt.sheetLength,'Sheet length',1), sheetWidth=n(opt.sheetWidth,'Sheet width',1),
+    kerf=n(opt.kerf??0,'Kerf',0), margin=n(opt.margin??0,'Edge margin',0);
+  if(2*margin>=Math.min(sheetLength,sheetWidth)) throw Error('Edge margin is too large.');
+  const items=expandRows(rows), cfg={sheetLength,sheetWidth,kerf,margin,usableW:sheetLength-2*margin,usableH:sheetWidth-2*margin};
+  const mode=['width','length'].includes(opt.cutMode)?opt.cutMode:'optimum';
+  const effort=opt.effort||'high', limit=effort==='standard'?12:effort==='max'?240:64;
+  const strategies=[];
+  const scoreModes=['short','area','long','remnant'];
+  for(const scorer of scoreModes) for(const order of ORDER) for(const rev of [false,true]) strategies.push({order,rev,seed:0,scorer});
+  for(let seed=1;strategies.length<limit;seed++) strategies.push({order:'shuffle',rev:false,seed,scorer:scoreModes[(seed-1)%scoreModes.length]});
+  let best=null, attempts=0;
+  for(const strategy of strategies.slice(0,limit)){
+    attempts++;
+    let sheets;
+    try{sheets=pack(items,cfg,strategy.order,strategy.rev,mode,strategy.seed,strategy.scorer);}catch(e){continue;}
+    validate(sheets,cfg,items.length);
+    const bbox=sheets.reduce((v,s)=>v+s.placed.reduce((m,p)=>Math.max(m,(p.x+p.w)*(p.y+p.h)),0),0);
+    const cuts=sheets.reduce((v,s)=>v+s.cuts.length,0);
+    const fragments=sheets.reduce((v,s)=>v+s.free.length,0);
+    const candidate={sheets,order:strategy.order,rev:strategy.rev,scorer:strategy.scorer,bbox,cuts,fragments};
+    const better=!best || sheets.length<best.sheets.length ||
+      (sheets.length===best.sheets.length && (
+        fragments<best.fragments ||
+        (fragments===best.fragments && (cuts<best.cuts || (cuts===best.cuts && bbox<best.bbox)))
+      ));
+    if(better) best=candidate;
   }
-
-  function contactScore(sheet, x, y, reserveW, reserveH, bounds) {
-    let score = 0;
-    if (Math.abs(x - bounds.x) < EPS) score += reserveH;
-    if (Math.abs(y - bounds.y) < EPS) score += reserveW;
-    if (Math.abs(x + reserveW - (bounds.x + bounds.w)) < EPS) score += reserveH;
-    if (Math.abs(y + reserveH - (bounds.y + bounds.h)) < EPS) score += reserveW;
-    for (const p of sheet.placed) {
-      const r = p.reserve;
-      if (Math.abs(r.x + r.w - x) < EPS || Math.abs(x + reserveW - r.x) < EPS) {
-        score += Math.max(0, Math.min(y + reserveH, r.y + r.h) - Math.max(y, r.y));
-      }
-      if (Math.abs(r.y + r.h - y) < EPS || Math.abs(y + reserveH - r.y) < EPS) {
-        score += Math.max(0, Math.min(x + reserveW, r.x + r.w) - Math.max(x, r.x));
-      }
-    }
-    return score;
-  }
-
-  function compareScore(a, b) {
-    if (!b) return -1;
-    for (let i = 0; i < a.length; i++) {
-      if (Math.abs(a[i] - b[i]) > EPS) return a[i] - b[i];
-    }
-    return 0;
-  }
-
-  function scoreCandidate(free, reserveW, reserveH, scorer, contact) {
-    const dw = Math.max(0, free.w - reserveW);
-    const dh = Math.max(0, free.h - reserveH);
-    switch (scorer) {
-      case 'baf': return [free.w * free.h - reserveW * reserveH, Math.min(dw, dh), Math.max(dw, dh), free.y, free.x];
-      case 'blsf': return [Math.max(dw, dh), Math.min(dw, dh), free.w * free.h - reserveW * reserveH, free.y, free.x];
-      case 'contact': return [-contact, Math.min(dw, dh), Math.max(dw, dh), free.y, free.x];
-      case 'bssf':
-      default: return [Math.min(dw, dh), Math.max(dw, dh), free.w * free.h - reserveW * reserveH, free.y, free.x];
-    }
-  }
-
-  function findBestPlacement(sheets, item, cfg, scorer) {
-    let best = null;
-    const orientations = [{ w: item.length, h: item.width, rotated: false }];
-    if (item.rotate && Math.abs(item.length - item.width) > EPS) {
-      orientations.push({ w: item.width, h: item.length, rotated: true });
-    }
-    for (let si = 0; si < sheets.length; si++) {
-      const sheet = sheets[si];
-      for (let fi = 0; fi < sheet.free.length; fi++) {
-        const f = sheet.free[fi];
-        for (const o of orientations) {
-          if (o.w > f.w + EPS || o.h > f.h + EPS) continue;
-          const touchesRight = Math.abs((f.x + o.w) - (cfg.sheetLength - cfg.margin)) < EPS;
-          const touchesBottom = Math.abs((f.y + o.h) - (cfg.sheetWidth - cfg.margin)) < EPS;
-          const reserveW = o.w + (touchesRight ? 0 : cfg.kerf);
-          const reserveH = o.h + (touchesBottom ? 0 : cfg.kerf);
-          if (reserveW > f.w + EPS || reserveH > f.h + EPS) continue;
-          const contact = contactScore(sheet, f.x, f.y, reserveW, reserveH, cfg.bounds);
-          const score = scoreCandidate(f, reserveW, reserveH, scorer, contact);
-          const candidate = { si, fi, x: f.x, y: f.y, w: o.w, h: o.h,
-            reserveW, reserveH, rotated: o.rotated, score };
-          if (!best || compareScore(score, best.score) < 0) best = candidate;
-        }
-      }
-    }
-    return best;
-  }
-
-  function createSheet(cfg) {
-    return {
-      free: [{ x: cfg.margin, y: cfg.margin, w: cfg.usableWidth, h: cfg.usableHeight }],
-      placed: []
-    };
-  }
-
-  function runPacking(items, cfg, ordering, scorer, variant) {
-    const ordered = sortedItems(items, ordering, variant);
-    const sheets = [];
-    for (const item of ordered) {
-      let fit = findBestPlacement(sheets, item, cfg, scorer);
-      if (!fit) {
-        const orientations = [{ w: item.length, h: item.width }];
-        if (item.rotate && Math.abs(item.length - item.width) > EPS) orientations.push({ w: item.width, h: item.length });
-        const canFit = orientations.some(o => o.w <= cfg.usableWidth + EPS && o.h <= cfg.usableHeight + EPS);
-        if (!canFit) {
-          throw new Error(`Row #${item.rowId} (${item.length} × ${item.width} mm) cannot fit on the usable sheet, even when rotated.`);
-        }
-        sheets.push(createSheet(cfg));
-        fit = findBestPlacement(sheets, item, cfg, scorer);
-        if (!fit) throw new Error(`The optimizer could not place row #${item.rowId}. Check the sheet size, margin and kerf.`);
-      }
-      const sheet = sheets[fit.si];
-      const reserve = { x: fit.x, y: fit.y, w: fit.reserveW, h: fit.reserveH };
-      sheet.free = splitFreeRectangles(sheet.free, reserve);
-      sheet.placed.push({
-        rowId: item.rowId,
-        unit: item.unit,
-        rowQty: item.rowQty,
-        length: item.length,
-        width: item.width,
-        x: fit.x,
-        y: fit.y,
-        w: fit.w,
-        h: fit.h,
-        reserve,
-        rotated: fit.rotated
-      });
-    }
-    return sheets;
-  }
-
-  function layoutQuality(sheets, margin) {
-    let boundingArea = 0;
-    let freeCount = 0;
-    let maxRight = 0;
-    let maxBottom = 0;
-    for (const sheet of sheets) {
-      let right = margin, bottom = margin;
-      for (const p of sheet.placed) {
-        right = Math.max(right, p.reserve.x + p.reserve.w);
-        bottom = Math.max(bottom, p.reserve.y + p.reserve.h);
-      }
-      maxRight = Math.max(maxRight, right);
-      maxBottom = Math.max(maxBottom, bottom);
-      boundingArea += Math.max(0, right - margin) * Math.max(0, bottom - margin);
-      freeCount += sheet.free.length;
-    }
-    return { boundingArea, freeCount, maxRight, maxBottom };
-  }
-
-  function isBetter(candidate, best) {
-    if (!best) return true;
-    if (candidate.sheets.length !== best.sheets.length) return candidate.sheets.length < best.sheets.length;
-    if (Math.abs(candidate.quality.boundingArea - best.quality.boundingArea) > EPS) {
-      return candidate.quality.boundingArea < best.quality.boundingArea;
-    }
-    if (candidate.quality.freeCount !== best.quality.freeCount) return candidate.quality.freeCount < best.quality.freeCount;
-    return candidate.ordering + candidate.scorer < best.ordering + best.scorer;
-  }
-
-  function validateLayout(sheets, kerf) {
-    let count = 0;
-    for (let si = 0; si < sheets.length; si++) {
-      const placed = sheets[si].placed;
-      count += placed.length;
-      for (let i = 0; i < placed.length; i++) {
-        for (let j = i + 1; j < placed.length; j++) {
-          const a = placed[i], b = placed[j];
-          const actualOverlap = a.x < b.x + b.w - EPS && a.x + a.w > b.x + EPS &&
-            a.y < b.y + b.h - EPS && a.y + a.h > b.y + EPS;
-          if (actualOverlap) throw new Error(`Internal validation failed: rows #${a.rowId} and #${b.rowId} overlap on sheet ${si + 1}.`);
-          const reserveOverlap = a.reserve.x < b.reserve.x + b.reserve.w - EPS && a.reserve.x + a.reserve.w > b.reserve.x + EPS &&
-            a.reserve.y < b.reserve.y + b.reserve.h - EPS && a.reserve.y + a.reserve.h > b.reserve.y + EPS;
-          if (kerf > 0 && reserveOverlap) throw new Error(`Internal kerf validation failed between rows #${a.rowId} and #${b.rowId} on sheet ${si + 1}.`);
-        }
-      }
-    }
-    return count;
-  }
-
-  function optimize(rows, options = {}) {
-    const sheetLength = number(options.sheetLength, 'Sheet length', 1);
-    const sheetWidth = number(options.sheetWidth, 'Sheet width', 1);
-    const kerf = number(options.kerf ?? 0, 'Kerf', 0);
-    const margin = number(options.margin ?? 0, 'Edge margin', 0);
-    if (2 * margin >= Math.min(sheetLength, sheetWidth)) throw new Error('Edge margin is too large for this sheet.');
-    const usableWidth = sheetLength - 2 * margin;
-    const usableHeight = sheetWidth - 2 * margin;
-    const items = expandRows(rows);
-    const oversized = items.filter(p => {
-      const normal = p.length <= usableWidth + EPS && p.width <= usableHeight + EPS;
-      const rotated = p.rotate && p.width <= usableWidth + EPS && p.length <= usableHeight + EPS;
-      return !normal && !rotated;
-    });
-    if (oversized.length) {
-      const p = oversized[0];
-      throw new Error(`Row #${p.rowId} (${p.length} × ${p.width} mm) is larger than the usable sheet (${usableWidth} × ${usableHeight} mm).`);
-    }
-
-    const effort = options.effort || 'high';
-    const targetAttempts = effort === 'max' ? 64 : effort === 'standard' ? 12 : 32;
-    const cfg = { sheetLength, sheetWidth, kerf, margin, usableWidth, usableHeight,
-      bounds: { x: margin, y: margin, w: usableWidth, h: usableHeight } };
-
-    const strategies = [];
-    for (let i = 0; i < ORDERINGS.length; i++) {
-      for (let j = 0; j < SCORERS.length; j++) {
-        strategies.push({ ordering: ORDERINGS[i], scorer: SCORERS[j], variant: i + j });
-      }
-    }
-    // Max effort adds alternate stable tie-break variants for extra diversification.
-    if (effort === 'max') {
-      for (let i = 0; i < 16; i++) strategies.push({
-        ordering: ORDERINGS[i % ORDERINGS.length],
-        scorer: SCORERS[(i * 3 + 1) % SCORERS.length],
-        variant: i + 11
-      });
-    }
-
-    let best = null;
-    const attempts = Math.min(targetAttempts, strategies.length);
-    for (let i = 0; i < attempts; i++) {
-      const strategy = strategies[i];
-      const sheets = runPacking(items, cfg, strategy.ordering, strategy.scorer, strategy.variant);
-      const quality = layoutQuality(sheets, margin);
-      const candidate = { sheets, quality, ordering: strategy.ordering, scorer: strategy.scorer };
-      if (isBetter(candidate, best)) best = candidate;
-    }
-
-    const placed = validateLayout(best.sheets, kerf);
-    if (placed !== items.length) throw new Error(`Only ${placed} of ${items.length} pieces were placed. The plan was rejected.`);
-    const partArea = items.reduce((sum, p) => sum + p.area, 0);
-    const grossSheetArea = sheetLength * sheetWidth * best.sheets.length;
-    const usedArea = best.sheets.reduce((sum, s) => sum + s.placed.reduce((a, p) => a + p.w * p.h, 0), 0);
-    return {
-      sheets: best.sheets,
-      sheetLength,
-      sheetWidth,
-      kerf,
-      margin,
-      rows: rows.length,
-      pieces: items.length,
-      partArea,
-      grossSheetArea,
-      usedArea,
-      wasteArea: grossSheetArea - partArea,
-      utilization: grossSheetArea ? partArea / grossSheetArea * 100 : 0,
-      attempts,
-      ordering: best.ordering,
-      scorer: best.scorer,
-      effort,
-      validated: true
-    };
-  }
-
-  return { optimize, expandRows };
+  if(!best) throw Error('No feasible guillotine layout found. Try a larger sheet or verify dimensions/rotation.');
+  const pieces=validate(best.sheets,cfg,items.length), partArea=items.reduce((a,p)=>a+p.area,0),
+    grossSheetArea=sheetLength*sheetWidth*best.sheets.length;
+  return {sheets:best.sheets,sheetLength,sheetWidth,kerf,margin,rows:rows.length,pieces,partArea,grossSheetArea,
+    wasteArea:grossSheetArea-partArea,utilization:partArea/grossSheetArea*100,attempts,ordering:best.order,
+    scorer:best.scorer,cutMode:mode,validated:true,guillotine:true};
+}
+return{optimize,expandRows};
 });
