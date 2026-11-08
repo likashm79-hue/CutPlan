@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CutPlan — Sheet Optimization</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="./nesting-engine.js"></script>
+<style>
+:root{--bg:#f3f6f7;--panel:#fff;--ink:#17252c;--muted:#687982;--line:#dbe4e7;--green:#176b5b;--green-soft:#e9f4f1;--amber:#fff6df;--amber-ink:#765414;--red:#b23f43;--shadow:0 10px 30px #19303a0b;--radius:16px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{max-width:1500px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.brand{display:flex;align-items:center;gap:12px}.logo{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--green);color:#fff;font-size:21px;font-weight:850}.brand h1{margin:0;font-size:22px;letter-spacing:-.4px}.brand p{margin:1px 0 0;color:var(--muted);font-size:12px}.version{background:var(--green-soft);color:var(--green);padding:7px 11px;border-radius:99px;font-size:11px;font-weight:800}.grid{display:grid;grid-template-columns:minmax(380px,480px) minmax(0,1fr);gap:18px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;min-width:0}.panel h2{font-size:16px;margin:0 0 4px}.sub{color:var(--muted);font-size:12px;margin:0 0 15px}.tabs{display:flex;gap:4px;background:#f0f4f5;border-radius:11px;padding:4px;margin-bottom:13px}.tabs button{flex:1;border:0;background:transparent;border-radius:8px;padding:9px;font-weight:700;color:var(--muted);cursor:pointer}.tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 4px #0001}.drop{border:1.5px dashed #b8c9cd;border-radius:12px;background:#fafcfc;padding:18px;text-align:center}.drop strong{display:block;margin:5px 0}.drop small{color:var(--muted)}input,select,textarea,button{font:inherit}input[type=file]{max-width:100%;margin:10px 0 0}textarea{width:100%;min-height:105px;padding:10px;border:1px solid var(--line);border-radius:10px;resize:vertical}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.field label{display:block;font-size:11px;font-weight:750;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:#fff;color:var(--ink)}.btn{border:0;border-radius:9px;background:var(--green);color:white;padding:10px 13px;font-weight:750;cursor:pointer}.btn.secondary{background:#edf2f3;color:#30424a}.btn.ghost{background:transparent;color:var(--green);border:1px solid var(--line)}.btn:disabled{opacity:.5;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.status{min-height:18px;margin-top:8px;color:var(--muted);font-size:12px}.status.error{color:var(--red)}.status.success{color:var(--green)}.hint{margin-top:12px;padding:11px 12px;border-radius:10px;background:var(--amber);border:1px solid #f0dfb0;color:var(--amber-ink);font-size:12px}.parts-head{display:flex;align-items:center;justify-content:space-between;margin:20px 0 8px}.parts-head h3{font-size:13px;margin:0}.parts-head small{color:var(--muted);font-weight:500}.table-wrap{overflow:auto;max-height:390px;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}th{position:sticky;top:0;z-index:1;background:#f4f7f8;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;text-align:left}td,th{padding:8px 7px;border-bottom:1px solid #edf1f2}td input{width:68px;padding:6px;border:1px solid var(--line);border-radius:6px}td input.ref{width:52px}td input[type=checkbox]{width:auto}.del{border:0;background:transparent;color:var(--red);font-size:17px;cursor:pointer}.right{display:flex;flex-direction:column;gap:18px}.canvas-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.canvas-head h2{margin:0 0 3px}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:15px 0}.metric{background:#f7f9fa;border:1px solid #e7edef;border-radius:11px;padding:11px;min-width:0}.metric span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:800;letter-spacing:.03em}.metric strong{display:block;margin-top:3px;font-size:20px;letter-spacing:-.5px;overflow-wrap:anywhere}.sheets{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:13px}.sheet-card{border:1px solid var(--line);border-radius:12px;padding:11px;min-width:0;break-inside:avoid}.sheet-title{display:flex;justify-content:space-between;gap:8px;font-weight:800;font-size:12px;margin-bottom:8px}.sheet-title small{font-size:11px;font-weight:550;color:var(--muted)}svg.layout{display:block;width:100%;height:auto;background:#f9fbfb;border:1px solid #cbd8dc;border-radius:6px}.piece{stroke:#fff;stroke-width:1.5;vector-effect:non-scaling-stroke}.piece-label{font-weight:800;fill:#193a35;text-anchor:middle;dominant-baseline:middle;pointer-events:none}.piece-dim{fill:#31564f;text-anchor:middle;pointer-events:none}.sheet-foot{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:var(--muted);font-size:10px}.piece-key{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 8px;margin-top:9px;padding-top:8px;border-top:1px solid #edf1f2}.piece-key span{font-size:10px;color:#40535b;overflow-wrap:anywhere}.piece-key b{color:#1e3935}.empty{padding:64px 18px;text-align:center;color:var(--muted)}.empty b{display:block;font-size:16px;color:var(--ink);margin-bottom:5px}.notice{padding:12px;border-radius:10px;background:#f6f9fa;border:1px solid var(--line);font-size:12px;color:#485b63}.notice strong{color:var(--ink)}.legend{color:var(--muted);font-size:11px;margin-top:10px}.pill{display:inline-flex;align-items:center;gap:5px;background:#edf6f3;color:var(--green);padding:4px 8px;border-radius:99px;font-size:10px;font-weight:800}.progress{height:7px;border-radius:99px;background:#edf1f2;overflow:hidden;margin-top:9px}.progress>i{display:block;height:100%;width:0;background:var(--green);transition:width .2s}.footer{color:var(--muted);font-size:11px;text-align:center;margin:18px 0 2px}.hidden{display:none!important}@media(max-width:1050px){.grid{grid-template-columns:1fr}.shell{padding:14px}}@media(max-width:580px){.metrics{grid-template-columns:repeat(2,1fr)}.field-grid{grid-template-columns:1fr 1fr}.canvas-head{flex-direction:column}.sheets{grid-template-columns:1fr}.top{align-items:flex-start}.version{display:none}}
+@media print{body{background:#fff}.shell{max-width:none;padding:0}.top,.left-panel,.canvas-head button,.before-panel{display:none!important}.grid{display:block}.panel{border:0;box-shadow:none;padding:0}.metrics{grid-template-columns:repeat(4,1fr)}.sheets{grid-template-columns:1fr 1fr}.sheet-card{break-inside:avoid}.footer{display:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="brand"><div class="logo">C</div><div><h1>CutPlan</h1><p>Cutting-list to optimized sheet layout</p></div></div>
+    <span class="version">MVP v0.3 · Multi-start optimizer</span>
+  </header>
+  <div class="grid">
+    <section class="panel left-panel">
+      <h2>1. Cutting list</h2>
+      <p class="sub">Upload a printed list, import CSV, or enter rows. Every row keeps its original reference number.</p>
+      <div class="tabs"><button id="tabImage" class="active" type="button">Image / OCR</button><button id="tabCsv" type="button">CSV import</button><button id="tabManual" type="button">Manual</button></div>
+      <div id="imagePane">
+        <div class="drop"><div style="font-size:25px">▧</div><strong>Upload a cutting-list image</strong><small>Printed tables work best · JPG, PNG</small><input id="imageFile" type="file" accept="image/*"></div>
+        <div class="actions"><button class="btn secondary" id="ocrBtn" disabled>Read image</button></div>
+        <div class="progress"><i id="ocrProgress"></i></div><div class="status" id="ocrStatus">OCR text is only a draft. You must review every extracted row.</div>
+        <label class="field" style="display:block;margin-top:10px"><span style="display:block;font-size:11px;color:var(--muted);font-weight:750;margin-bottom:5px">Recognized text (editable before parsing)</span><textarea id="ocrText" placeholder="Rows should look like: 1  470  300  2  Yes"></textarea></label>
+        <div class="actions"><button class="btn" id="parseOcr">Parse rows</button><button class="btn ghost" id="clearOcr">Clear text</button></div>
+      </div>
+      <div id="csvPane" class="hidden">
+        <p class="sub">Preferred CSV columns: row_id,length,width,quantity,rotation. Also accepts the older length,width,quantity,rotation,name format.</p>
+        <textarea id="csvText" placeholder="row_id,length,width,quantity,rotation&#10;1,470,300,2,yes&#10;2,700,300,4,yes"></textarea>
+        <div class="actions"><button class="btn" id="importCsv">Import CSV</button><button class="btn secondary" id="downloadTemplate">Download template</button><button class="btn ghost" id="loadBenchmark">Load my 27-row test list</button></div>
+      </div>
+      <div id="manualPane" class="hidden">
+        <p class="sub">Add rows directly. Ref is the row number from your original cutting list, not an artificial “Part 1” name.</p>
+        <div class="actions" style="margin-top:0"><button class="btn" id="addRow">+ Add cutting-list row</button><button class="btn ghost" id="loadBenchmark2">Load my 27-row test list</button></div>
+      </div>
+
+      <div class="parts-head"><h3>ROWS <small id="rowSummary">0 rows · 0 pieces</small></h3><button class="btn ghost" id="clearRows" style="padding:7px 10px">Clear list</button></div>
+      <div class="table-wrap"><table><thead><tr><th>Ref</th><th>Length</th><th>Width</th><th>Qty</th><th>Rotate</th><th></th></tr></thead><tbody id="partsBody"><tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">No rows yet. Upload a list or add a row.</td></tr></tbody></table></div>
+
+      <h2 style="margin-top:20px">2. Sheet & cut settings</h2>
+      <div class="field-grid">
+        <div class="field"><label for="sheetL">Sheet length (mm)</label><input id="sheetL" type="number" min="1" placeholder="Enter sheet length"></div>
+        <div class="field"><label for="sheetW">Sheet width (mm)</label><input id="sheetW" type="number" min="1" placeholder="Enter sheet width"></div>
+        <div class="field"><label for="kerf">Blade kerf (mm)</label><input id="kerf" type="number" min="0" step="0.1" placeholder="Unknown"></div>
+        <div class="field"><label for="margin">Edge margin (mm)</label><input id="margin" type="number" min="0" step="1" value="0"></div>
+        <div class="field" style="grid-column:1/-1"><label for="effort">Optimization search effort</label><select id="effort"><option value="standard">Standard · 12 strategies</option><option value="high" selected>High · 32 strategies</option><option value="max">Maximum · 48 strategies</option></select></div>
+      </div>
+      <div class="hint"><strong>Kerf:</strong> enter the measured blade width. If left blank, the layout is provisional and assumes 0 mm kerf. The optimizer reserves a conservative kerf clearance between parts; the drawing labels show true part dimensions.</div>
+      <div class="actions"><button class="btn" id="optimize" style="flex:1">Optimize layout</button><button class="btn secondary" id="exportCsv">Export validated rows</button></div>
+      <div class="status" id="mainStatus" aria-live="polite"></div>
+    </section>
+
+    <div class="right">
+      <section class="panel">
+        <div class="canvas-head"><div><h2>3. Optimized sheet layout</h2><p class="sub" style="margin:2px 0 0">Labels use your cutting-list row reference and piece number, so you can match every cut back to the source row.</p></div><button class="btn secondary" id="printBtn" disabled>Print / Save PDF</button></div>
+        <div class="metrics">
+          <div class="metric"><span>Sheets used</span><strong id="mSheets">—</strong></div>
+          <div class="metric"><span>Pieces placed</span><strong id="mPieces">—</strong></div>
+          <div class="metric"><span>Utilization</span><strong id="mUtil">—</strong></div>
+          <div class="metric"><span>Waste area</span><strong id="mWaste">—</strong></div>
+        </div>
+        <div id="layoutArea" class="empty"><b>Your layout will appear here</b>Start with your cutting list, confirm the sheet size and run optimization.</div>
+        <div class="legend">Each rectangle is one physical piece. Example: <strong>#13 · 1/2</strong> means the first of two pieces from row 13. Dimensions shown are the actual cut dimensions, including rotation where used.</div>
+      </section>
+      <section class="panel before-panel">
+        <h2>4. Validation & production notes</h2>
+        <p class="sub">CutPlan checks that all entered pieces are placed and that rectangles do not overlap.</p>
+        <div id="warnings" class="notice">No plan generated yet.</div>
+      </section>
+    </div>
+  </div>
+  <div class="footer">CutPlan · Browser-based prototype · Verify machine cutting sequence, grain direction, clamping and edge trim before production.</div>
+</div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+let rows = [];
+let lastPlan = null;
+let imageFile = null;
+const colors = ['#d4e6f6','#cce5dc','#f6dfb6','#e6d9f3','#f2d7d8','#d4e8eb','#e8eacb','#d9def4'];
+
+function setTab(tab) {
+  for (const key of ['image','csv','manual']) {
+    $(`${key}Pane`).classList.toggle('hidden', key !== tab);
+    $(`tab${key[0].toUpperCase()}${key.slice(1)}`).classList.toggle('active', key === tab);
+  }
+}
+$('tabImage').onclick = () => setTab('image');
+$('tabCsv').onclick = () => setTab('csv');
+$('tabManual').onclick = () => setTab('manual');
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function nextRowId() {
+  const nums = rows.map(r => Number(r.rowId)).filter(Number.isFinite);
+  let next = 1;
+  while (nums.includes(next)) next++;
+  return String(next);
+}
+function pieceTotal() { return rows.reduce((sum, row) => sum + (Number(row.qty) || 0), 0); }
+function invalidatePlan() {
+  lastPlan = null;
+  $('printBtn').disabled = true;
+  $('layoutArea').className = 'empty';
+  $('layoutArea').innerHTML = '<b>Cutting list changed</b>Run optimization again to update the layout.';
+  $('warnings').textContent = 'Plan is out of date. Optimize again after editing the cutting list.';
+  for (const id of ['mSheets','mPieces','mUtil','mWaste']) $(id).textContent = '—';
+}
+function renderRows() {
+  $('rowSummary').textContent = `${rows.length} rows · ${pieceTotal()} pieces`;
+  if (!rows.length) {
+    $('partsBody').innerHTML = '<tr><td colspan="6" style="padding:24px;text-align:center;color:var(--muted)">No rows yet. Upload a list or add a row.</td></tr>';
+    return;
+  }
+  $('partsBody').innerHTML = rows.map((r, i) => `<tr data-i="${i}">
+    <td><input class="ref" type="text" data-k="rowId" value="${escapeHtml(r.rowId)}" aria-label="Row reference"></td>
+    <td><input type="number" min="0.1" step="0.1" data-k="length" value="${escapeHtml(r.length)}" aria-label="Length"></td>
+    <td><input type="number" min="0.1" step="0.1" data-k="width" value="${escapeHtml(r.width)}" aria-label="Width"></td>
+    <td><input type="number" min="1" step="1" data-k="qty" value="${escapeHtml(r.qty)}" aria-label="Quantity"></td>
+    <td style="text-align:center"><input type="checkbox" data-k="rotate" ${r.rotate ? 'checked' : ''} aria-label="Allow rotation"></td>
+    <td><button class="del" data-del="${i}" title="Delete row" aria-label="Delete row">×</button></td>
+  </tr>`).join('');
+  $('partsBody').querySelectorAll('input').forEach(input => input.addEventListener('change', e => {
+    const tr = e.target.closest('tr');
+    const i = Number(tr.dataset.i);
+    const key = e.target.dataset.k;
+    rows[i][key] = key === 'rotate' ? e.target.checked : key === 'rowId' ? e.target.value.trim() : Number(e.target.value);
+    $('rowSummary').textContent = `${rows.length} rows · ${pieceTotal()} pieces`;
+    invalidatePlan();
+  }));
+  $('partsBody').querySelectorAll('[data-del]').forEach(button => button.addEventListener('click', () => {
+    rows.splice(Number(button.dataset.del), 1); renderRows(); invalidatePlan();
+  }));
+}
+function addRow(data = {}) {
+  rows.push({ rowId: data.rowId ?? nextRowId(), length: data.length ?? 600, width: data.width ?? 400,
+    qty: data.qty ?? 1, rotate: data.rotate ?? true });
+  renderRows(); invalidatePlan();
+}
+$('addRow').onclick = () => addRow();
+$('clearRows').onclick = () => { rows = []; renderRows(); invalidatePlan(); $('mainStatus').textContent = 'Cutting list cleared.'; };
+
+const benchmarkRows = [
+  [1,470,300,2],[2,700,300,4],[3,470,290,1],[4,688,490,5],[5,676,65,2],[6,676,180,3],
+  [7,220,300,2],[8,220,290,1],[9,776,300,1],[10,300,300,2],[11,470,300,1],[12,300,300,2],
+  [13,1012,400,2],[14,350,400,2],[15,877,380,1],[16,877,90,2],[17,800,380,2],[18,877,370,1],
+  [19,677,500,2],[20,1306,500,2],[21,717,490,1],[22,860,300,2],[23,565,300,2],[24,677,270,1],
+  [25,570,300,2],[26,565,300,2],[27,450,290,1]
+].map(([rowId,length,width,qty]) => ({ rowId: String(rowId), length, width, qty, rotate: true }));
+function loadBenchmark() {
+  rows = benchmarkRows.map(r => ({...r})); renderRows(); invalidatePlan();
+  $('mainStatus').textContent = 'Loaded the 27-row benchmark list from your photo. Check the values before optimizing.';
+}
+$('loadBenchmark').onclick = loadBenchmark;
+$('loadBenchmark2').onclick = loadBenchmark;
+
+function parseNumericTokens(line) {
+  return (line.match(/\d+(?:[.,]\d+)?/g) || []).map(s => Number(s.replace(',', '.'))).filter(Number.isFinite);
+}
+function parseOcrRows(text) {
+  const output = [], rejected = [];
+  const seen = new Set();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const lower = line.toLowerCase();
+    if (/cutting\s*list|length|width|quantity|rotation|\bqty\b|\bmm\b/.test(lower)) continue;
+    const nums = parseNumericTokens(line);
+    if (nums.length < 3) continue;
+    let rowId, length, width, qty;
+    // Table format: row number, length, width, quantity, rotation.
+    // Do not blindly take the first three numbers: the first is often the row number.
+    const firstLooksLikeRow = Number.isInteger(nums[0]) && nums[0] >= 1 && nums[0] <= 500 && nums.length >= 4;
+    if (firstLooksLikeRow) [rowId, length, width, qty] = nums;
+    else { rowId = output.length + 1; [length, width, qty] = nums; }
+    const valid = Number.isInteger(rowId) && rowId > 0 && length >= 20 && length <= 100000 && width >= 20 && width <= 100000 && Number.isInteger(qty) && qty >= 1 && qty <= 10000;
+    if (!valid) { rejected.push(line); continue; }
+    let rotate = true;
+    if (/\b(no|false|fixed|cannot)\b/i.test(line)) rotate = false;
+    else if (/\b(yes|true|rotate)\b/i.test(line)) rotate = true;
+    const key = String(rowId);
+    if (seen.has(key)) { rejected.push(line); continue; }
+    seen.add(key);
+    output.push({ rowId: key, length, width, qty, rotate });
+  }
+  return { rows: output, rejected };
+}
+
+$('imageFile').onchange = e => {
+  imageFile = e.target.files?.[0] || null;
+  $('ocrBtn').disabled = !imageFile;
+  $('ocrStatus').textContent = imageFile ? `Selected: ${imageFile.name}. Click Read image.` : 'OCR text is only a draft. Review every extracted row.';
+};
+async function preprocessImage(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(3, Math.max(1.6, 1800 / bitmap.width));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const gray = img.data[i] * .299 + img.data[i+1] * .587 + img.data[i+2] * .114;
+    const contrast = Math.max(0, Math.min(255, (gray - 128) * 1.35 + 128));
+    img.data[i] = img.data[i+1] = img.data[i+2] = contrast;
+  }
+  ctx.putImageData(img, 0, 0);
+  bitmap.close?.();
+  return canvas;
+}
+$('ocrBtn').onclick = async () => {
+  if (!imageFile) return;
+  if (!window.Tesseract) { $('ocrStatus').textContent = 'OCR library did not load. Check your internet connection or use CSV/manual input.'; return; }
+  $('ocrBtn').disabled = true; $('ocrProgress').style.width = '0%'; $('ocrStatus').textContent = 'Preprocessing image…';
+  try {
+    const processed = await preprocessImage(imageFile);
+    const result = await Tesseract.recognize(processed, 'eng', {
+      logger: msg => {
+        if (msg.status) $('ocrStatus').textContent = `${msg.status}${msg.progress ? ` · ${Math.round(msg.progress * 100)}%` : ''}`;
+        if (typeof msg.progress === 'number') $('ocrProgress').style.width = `${Math.round(msg.progress * 100)}%`;
+      },
+      tessedit_pageseg_mode: 6,
+      preserve_interword_spaces: '1'
+    });
+    $('ocrText').value = result.data.text || '';
+    $('ocrStatus').textContent = `OCR complete · confidence ${Math.round(result.data.confidence || 0)}%. Review the recognized text, then parse rows.`;
+  } catch (error) {
+    $('ocrStatus').textContent = `OCR failed: ${error.message}`;
+  } finally { $('ocrBtn').disabled = false; }
+};
+$('parseOcr').onclick = () => {
+  const parsed = parseOcrRows($('ocrText').value);
+  if (!parsed.rows.length) { $('ocrStatus').textContent = 'No rows could be safely parsed. Check the text format or use CSV/manual entry.'; return; }
+  rows = parsed.rows; renderRows(); invalidatePlan();
+  $('ocrStatus').textContent = `Parsed ${parsed.rows.length} rows / ${pieceTotal()} pieces. ${parsed.rejected.length} line(s) skipped. Verify every value in the table.`;
+  $('mainStatus').textContent = 'OCR data loaded for review. Optimization is not run automatically.';
+};
+$('clearOcr').onclick = () => { $('ocrText').value = ''; $('ocrStatus').textContent = 'OCR text cleared.'; };
+
+function parseCsvLine(line) {
+  // Simple CSV reader supports quoted cells and commas inside quoted names.
+  const cells = []; let cur = '', quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"' && line[i+1] === '"' && quoted) { cur += '"'; i++; }
+    else if (ch === '"') quoted = !quoted;
+    else if ((ch === ',' || ch === '\t' || ch === ';') && !quoted) { cells.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+$('importCsv').onclick = () => {
+  const imported = [];
+  for (const [lineIndex, line] of $('csvText').value.split(/\r?\n/).entries()) {
+    if (!line.trim()) continue;
+    const c = parseCsvLine(line);
+    if (lineIndex === 0 && /row|length|width|qty|quantity/i.test(line)) continue;
+    let row;
+    if (c.length >= 5 && /^\d+$/.test(c[0]) && /^(yes|no|true|false|0|1|fixed)$/i.test(c[4])) {
+      row = { rowId: c[0], length: Number(c[1]), width: Number(c[2]), qty: Number(c[3]), rotate: !/^(no|false|0|fixed)$/i.test(c[4]) };
+    } else if (c.length >= 4) {
+      // Compatibility with earlier MVP CSV: length,width,quantity,rotation[,name].
+      row = { rowId: String(imported.length + 1), length: Number(c[0]), width: Number(c[1]), qty: Number(c[2]), rotate: !/^(no|false|0|fixed)$/i.test(c[3]) };
+    }
+    if (row && row.length > 0 && row.width > 0 && Number.isInteger(row.qty) && row.qty > 0) imported.push(row);
+  }
+  if (!imported.length) { setStatus('mainStatus', 'No valid CSV rows found. Use row_id,length,width,quantity,rotation.', true); return; }
+  rows = imported; renderRows(); invalidatePlan();
+  $('mainStatus').textContent = `Imported ${rows.length} rows / ${pieceTotal()} pieces. Review values before optimizing.`;
+};
+$('downloadTemplate').onclick = () => {
+  const csv = 'row_id,length,width,quantity,rotation\n1,470,300,2,yes\n2,700,300,4,yes\n';
+  downloadBlob(csv, 'cutplan-template.csv', 'text/csv');
+};
+function downloadBlob(content, filename, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$('exportCsv').onclick = () => {
+  if (!rows.length) { setStatus('mainStatus', 'There are no rows to export.', true); return; }
+  const lines = ['row_id,length,width,quantity,rotation', ...rows.map(r => [r.rowId,r.length,r.width,r.qty,r.rotate ? 'yes' : 'no'].join(','))];
+  downloadBlob(lines.join('\n'), 'cutplan-validated-list.csv', 'text/csv');
+};
+
+function setStatus(id, message, error = false) {
+  $(id).textContent = message; $(id).classList.toggle('error', error); $(id).classList.toggle('success', !error && !!message);
+}
+function fmtArea(mm2) { return (mm2 / 1e6).toFixed(3) + ' m²'; }
+function renderPlan(plan) {
+  $('mSheets').textContent = plan.sheets.length;
+  $('mPieces').textContent = plan.pieces;
+  $('mUtil').textContent = plan.utilization.toFixed(1) + '%';
+  $('mWaste').textContent = fmtArea(plan.wasteArea);
+  $('layoutArea').className = '';
+  const cardHtml = plan.sheets.map((sheet, sheetIndex) => {
+    const shapes = sheet.placed.map((p, idx) => {
+      const ref = `#${p.rowId} · ${p.unit}/${p.rowQty}`;
+      const color = colors[(Number(String(p.rowId).replace(/\D/g,'')) || sheetIndex + idx) % colors.length];
+      const minSide = Math.min(p.w, p.h);
+      const labelSize = Math.max(14, Math.min(58, minSide * .22));
+      const dimSize = Math.max(11, Math.min(36, minSide * .14));
+      const centerX = p.x + p.w / 2, centerY = p.y + p.h / 2;
+      const readableInside = minSide >= 125 && p.w >= 150 && p.h >= 125;
+      const labelY = centerY - dimSize * .48;
+      const dimY = centerY + dimSize * .9;
+      const dim = `${p.w} × ${p.h}`;
+      return `<g><rect class="piece" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="${color}"/>` +
+        (readableInside ? `<text class="piece-label" x="${centerX}" y="${labelY}" font-size="${labelSize}">${escapeHtml(ref)}</text><text class="piece-dim" x="${centerX}" y="${dimY}" font-size="${dimSize}">${escapeHtml(dim)}</text>` : '') + `</g>`;
+    }).join('');
+    const partArea = sheet.placed.reduce((sum,p)=>sum+p.w*p.h,0);
+    const pieceKey = sheet.placed.map(p => `<span><b>#${escapeHtml(p.rowId)} · ${p.unit}/${p.rowQty}</b> — ${p.w} × ${p.h} mm${p.rotated ? ' ↻' : ''}</span>`).join('');
+    return `<article class="sheet-card"><div class="sheet-title"><span>Sheet ${sheetIndex+1}</span><small>${plan.sheetLength} × ${plan.sheetWidth} mm</small></div>`+
+      `<svg class="layout" viewBox="0 0 ${plan.sheetLength} ${plan.sheetWidth}" role="img" aria-label="Sheet ${sheetIndex+1} cutting layout"><rect x="0" y="0" width="${plan.sheetLength}" height="${plan.sheetWidth}" fill="#fff" stroke="#344c56" stroke-width="6"/>${shapes}</svg>`+
+      `<div class="sheet-foot"><span>${sheet.placed.length} pieces</span><span>${fmtArea(partArea)} part area</span></div><div class="piece-key">${pieceKey}</div></article>`;
+  }).join('');
+  $('layoutArea').innerHTML = `<div class="sheets">${cardHtml}</div>`;
+  const kerfMessage = plan.kerf > 0 ? `Kerf clearance: ${plan.kerf} mm (conservative trailing-edge allowance).` : 'Kerf is 0 mm in this calculation; confirm the actual blade kerf before production.';
+  $('warnings').innerHTML = `<span class="pill">All ${plan.pieces} pieces placed and geometry validated</span><p><strong>Search:</strong> ${plan.attempts} layout strategies · best combination: ${escapeHtml(plan.ordering)} order + ${escapeHtml(plan.scorer)} placement score.</p><p>${escapeHtml(kerfMessage)}</p><p>Sheet: ${plan.sheetLength} × ${plan.sheetWidth} mm · Edge margin: ${plan.margin} mm · Part area: ${fmtArea(plan.partArea)} · Total sheet area: ${fmtArea(plan.grossSheetArea)}.</p><p><strong>Machine note:</strong> this is general rectangular nesting. It does not yet generate a verified guillotine saw-cut sequence or account for grain direction, defects, clamps, edging or panel-specific restrictions.</p>`;
+}
+$('optimize').onclick = () => {
+  try {
+    if (!rows.length) throw new Error('Add or import your cutting-list rows first.');
+    const sheetLength = Number($('sheetL').value), sheetWidth = Number($('sheetW').value);
+    if (!(sheetLength > 0 && sheetWidth > 0)) throw new Error('Enter a valid custom sheet length and width.');
+    const kerfKnown = $('kerf').value.trim() !== '';
+    const kerf = kerfKnown ? Number($('kerf').value) : 0;
+    const margin = Number($('margin').value || 0);
+    if (!Number.isFinite(kerf) || kerf < 0 || !Number.isFinite(margin) || margin < 0) throw new Error('Check kerf and edge margin values.');
+    setStatus('mainStatus', 'Searching multiple packing strategies…');
+    $('optimize').disabled = true;
+    // Defer computation so the progress text paints before the optimizer starts.
+    setTimeout(() => {
+      try {
+        const plan = CutPlanEngine.optimize(rows, { sheetLength, sheetWidth, kerf, margin, effort: $('effort').value });
+        plan.kerfKnown = kerfKnown;
+        lastPlan = plan; renderPlan(plan);
+        $('printBtn').disabled = false;
+        setStatus('mainStatus', `Validated ${plan.pieces} pieces from ${plan.rows} rows across ${plan.sheets.length} sheet(s). Tested ${plan.attempts} strategies. ${kerfKnown ? 'Kerf allowance included.' : 'WARNING: provisional zero-kerf layout.'}`);
+      } catch (error) { setStatus('mainStatus', error.message, true); }
+      finally { $('optimize').disabled = false; }
+    }, 40);
+  } catch (error) { setStatus('mainStatus', error.message, true); }
+};
+$('printBtn').onclick = () => {
+  if (!lastPlan) return;
+  window.print();
+};
+
+// Deliberately start empty. No fake sample rows are inserted into the user's job.
+renderRows();
+</script>
+</body>
+</html>
